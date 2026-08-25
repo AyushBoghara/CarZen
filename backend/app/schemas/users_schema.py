@@ -57,3 +57,31 @@ class UserResponse(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+
+class UserUpdateProfile(BaseModel):
+    first_name: str | None = None
+    last_name: str | None = None
+    username: str | None = None
+    email: EmailStr | None = None
+    phone_number: str | None = None
+    profile_image_url: str | None = None
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class UserRoleStatusUpdate(BaseModel):
+    role: UserRoles | None = None
+    status: UserStatus | None = None
+
+
+class TokenValidationResponse(BaseModel):
+    valid: bool
+    user: UserResponse
+
+
+class MessageResponse(BaseModel):
+    message: str

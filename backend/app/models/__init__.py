@@ -1,5 +1,4 @@
 from app.models.address import Addresses
-from app.models.admins import Admins
 from app.models.car_brands import CarBrands
 from app.models.car_features import CarFeatures
 from app.models.car_media import CarMedia

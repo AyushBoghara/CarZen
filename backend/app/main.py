@@ -5,6 +5,7 @@ from app.database.connection.conn import Base,engine
 
 from app.api.v1 import home as h
 from app.api.v1.auth import auth as authRouter
+from app.api.v1.users import users_management
 
 #create tables 
 Base.metadata.create_all(bind=engine)
@@ -23,3 +24,4 @@ app.add_middleware(
 app.include_router(h.router,tags=["home"])
 # Register and login auth routes
 app.include_router(authRouter.router,prefix="/v1/auth",tags=["auth"])
+app.include_router(users_management.router,prefix="/v1",tags=["users"])

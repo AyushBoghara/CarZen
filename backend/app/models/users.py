@@ -43,4 +43,3 @@ class User(Base):
 
     price_predictions = relationship("PricePredictions", back_populates="user", foreign_keys="PricePredictions.user_id")
     reviews = relationship("Reviews", back_populates="user", foreign_keys="Reviews.user_id")
-    admin = relationship("Admins", back_populates="user", uselist=False, foreign_keys="Admins.user_id")
