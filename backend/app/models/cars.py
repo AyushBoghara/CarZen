@@ -21,7 +21,8 @@ from app.models.enums.CarEnums import (
     FuelType,
     TransmissionType,
     OwnershipType,
-    CarCondition
+    CarCondition,
+    CarApprovalStatus,
 )
 
 
@@ -116,7 +117,7 @@ class Cars(Base):
 
     condition = Column(
         Enum(CarCondition),
-        nullable=False
+        nullable=True
     )
 
     insurance_company = Column(
@@ -175,6 +176,19 @@ class Cars(Base):
         default=False
     )
 
+    approval_status = Column(
+        Enum(
+            CarApprovalStatus,
+            values_callable=lambda enum_type: [member.value for member in enum_type],
+        ),
+        nullable=False,
+        default=CarApprovalStatus.PENDING_APPROVAL,
+    )
+
+    rejection_reason = Column(Text, nullable=True)
+    verified_at = Column(DateTime, nullable=True)
+    verified_by_id = Column(BigInteger, ForeignKey("users.id"), nullable=True)
+
     created_at = Column(
         DateTime,
         default=datetime.datetime.utcnow
@@ -194,6 +208,7 @@ class Cars(Base):
      # Relationships
     variant = relationship("CarVariants", back_populates="cars", foreign_keys=[variant_id])
     owner = relationship("User", back_populates="cars_owned", foreign_keys=[owner_id])
+    verified_by = relationship("User", foreign_keys=[verified_by_id])
  
     media = relationship("CarMedia", back_populates="car", foreign_keys="CarMedia.car_id")
     features = relationship("CarFeatures", back_populates="car", foreign_keys="CarFeatures.car_id")

@@ -129,6 +129,7 @@ def register_admin(db:Session,user:UserRegister):
     
     return db_user
 
+
 def login(db:Session,user:UserLogin):
     
     db_user = db.query(User).filter(User.email == user.email).first()

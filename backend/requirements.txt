@@ -7,3 +7,5 @@ pydantic-settings==2.15.0  # Manage app settings via Pydantic
 python-jose==3.5.0
 pytest-httpx==0.36.2
 httpx==0.28.1
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.20

@@ -41,6 +41,18 @@ class CarCondition(str, Enum):
     GOOD = "good"
     FAIR = "fair"
     POOR = "poor"
+    NEW  = "new"
+    OLD = "oldCar"
+
+
+class CarApprovalStatus(str, Enum):
+    DRAFT = "draft"
+    PENDING_APPROVAL = "pending_approval"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    PUBLISHED = "published"
+    SOLD = "sold"
+    INACTIVE = "inactive"
 
 
 class MediaType(str, Enum):
