@@ -12,7 +12,6 @@ from sqlalchemy.orm import relationship
 
 from app.database.connection import Base
 
-
 class Reports(Base):
     __tablename__ = "reports"
 

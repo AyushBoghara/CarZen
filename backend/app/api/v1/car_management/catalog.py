@@ -46,13 +46,18 @@ def create_brand(payload: CarBrandCreate, db: Session = Depends(get_db), _: User
 
 @router.patch("/admin/car-brands/{brand_id}", response_model=CarBrandResponse, tags=["Car Brands"])
 def update_brand(brand_id: int, payload: CarBrandUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
-    try: return catalog_service.update_brand(db, brand_id, payload.model_dump(exclude_unset=True))
-    except Exception as exc: _error(exc)
+    try: 
+        return catalog_service.update_brand(db, brand_id, payload.model_dump(exclude_unset=True))
+    except Exception as exc:
+        _error(exc)
 
 @router.delete("/admin/car-brands/{brand_id}", response_model=MessageResponse, tags=["Car Brands"])
 def delete_brand(brand_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
-    try: catalog_service.delete_brand(db, brand_id); return {"message": "Car brand deleted successfully."}
-    except Exception as exc: _error(exc)
+    try: 
+        catalog_service.delete_brand(db, brand_id)
+        return {"message": "Car brand deleted successfully."}
+    except Exception as exc: 
+        _error(exc)
 
 @router.patch("/admin/car-brands/{brand_id}/status", response_model=CarBrandResponse, tags=["Car Brands"])
 def set_brand_status(brand_id: int, payload: ActiveStatusUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
@@ -92,7 +97,8 @@ def create_model(payload: CarModelCreate, db: Session = Depends(get_db), _: User
 
 @router.patch("/admin/car-models/{model_id}", response_model=CarModelResponse, tags=["Car Models"])
 def update_model(model_id: int, payload: CarModelUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
-    try: return catalog_service.update_model(db, model_id, payload.model_dump(exclude_unset=True))
+    try: 
+        return catalog_service.update_model(db, model_id, payload.model_dump(exclude_unset=True))
     except Exception as exc: 
         _error(exc)
 
@@ -118,7 +124,8 @@ def list_variants(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=10
 
 @router.get("/car-variants/{variant_id}", response_model=CarVariantResponse, tags=["Car Variants"])
 def get_variant(variant_id: int, db: Session = Depends(get_db)):
-    try: return catalog_service.get_variant(db, variant_id)
+    try: 
+        return catalog_service.get_variant(db, variant_id)
     except Exception as exc:
         _error(exc)
 

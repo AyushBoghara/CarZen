@@ -60,7 +60,8 @@ def get_car(car_id: int, db: Session = Depends(get_db), current_user: User = Dep
 def update_car(car_id: int, payload: CarUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     try: 
         return car_service.update_car(db, car_id, current_user, payload.model_dump(exclude_unset=True), allow_admin=current_user.role == UserRoles.ADMIN)
-    except Exception as exc: _raise(exc)
+    except Exception as exc: 
+        _raise(exc)
 
 
 @router.delete("/cars/{car_id}", response_model=MessageResponse, summary="Soft-delete an owned car", tags=["Cars"])
@@ -129,7 +130,8 @@ def list_features(car_id: int, db: Session = Depends(get_db), current_user: User
     try: 
         _managed_car(db, car_id, current_user)
         return feature_service.list_features(db, car_id)
-    except Exception as exc: _raise(exc)
+    except Exception as exc: 
+        _raise(exc)
 
 @router.post("/cars/{car_id}/features", response_model=CarFeatureResponse, status_code=201, tags=["Car Features"])
 def create_feature(car_id: int, payload: CarFeatureCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -148,8 +150,12 @@ def update_feature(car_id: int, feature_id: int, payload: CarFeatureUpdate, db: 
 
 @router.delete("/cars/{car_id}/features/{feature_id}", response_model=MessageResponse, tags=["Car Features"])
 def delete_feature(car_id: int, feature_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    try: _managed_car(db, car_id, current_user); feature_service.delete_feature(db, car_id, feature_id); return {"message": "Feature deleted successfully."}
-    except Exception as exc: _raise(exc)
+    try: 
+        _managed_car(db, car_id, current_user)
+        feature_service.delete_feature(db, car_id, feature_id)
+        return {"message": "Feature deleted successfully."}
+    except Exception as exc: 
+        _raise(exc)
 
 
 @router.get("/admin/cars", response_model=PaginatedResponse[CarResponse], tags=["Admin Cars"])

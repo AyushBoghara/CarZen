@@ -8,7 +8,7 @@ from app.database.connection.conn import get_db
 from app.models.enums.CarEnums import CarCondition, FuelType, TransmissionType
 from app.models.users import User
 from app.schemas.cars_schema import PaginatedResponse
-from app.schemas.marketplace_schema import FavoriteResponse, ListingCreate, ListingResponse, ListingUpdate
+from app.schemas.marketplace_schema import FavoriteResponse, ListingCreate, ListingResponse, ListingUpdate,ListingResponseSecond
 from app.schemas.users_schema import MessageResponse
 from app.services.car import marketplace_service
 
@@ -65,13 +65,16 @@ def list_public_listings(page: int = Query(1, ge=1), limit: int = Query(20, ge=1
     data, pagination = marketplace_service.list_public_listings(db, page, limit, **filters)
     return {"data": data, "pagination": pagination}
 
-@router.get("/listings/{listing_id}", response_model=ListingResponse, tags=["Listings"])
+@router.get("/listings/{listing_id}", response_model=ListingResponseSecond, tags=["Listings"])
 def get_public_listing(listing_id: int, db: Session = Depends(get_db)):
     try:
-        listing = marketplace_service.get_listing(db, listing_id)
+        listing = marketplace_service.get_listings(db, listing_id)
+        
         listing.views_count = (listing.views_count or 0) + 1
+        
         db.commit()
         db.refresh(listing)
+        
         return listing
     except Exception as exc:
         _raise(exc)

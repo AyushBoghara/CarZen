@@ -113,7 +113,7 @@ class CarCreate(BaseModel):
     mileage_km: Decimal = Field(ge=0)
     color: str | None = Field(default=None, max_length=50)
     seating_capacity: int | None = Field(default=None, ge=1)
-    owner_count: int | None = Field(default=None, ge=1)
+    owner_count: int | None = Field(default=None, ge=0)
     ownership_type: OwnershipType | None = None
     condition: CarCondition
     insurance_company: str | None = Field(default=None, max_length=150)

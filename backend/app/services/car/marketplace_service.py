@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.enums.CarEnums import CarApprovalStatus
 from app.models.enums.ListingEnums import ListingStatus
@@ -10,6 +12,9 @@ from app.models.listings import Listings
 from app.models.users import User
 from app.services.car import car_service
 from app.services.car.catalog_service import paginate
+from app.schemas.cars_schema import CarDetailResponse
+from app.models.car_variants import CarVariants
+from app.models.car_models import CarModels
 
 
 def create_listing(db: Session, car_id: int, user: User, values: dict) -> Listings:
@@ -31,11 +36,51 @@ def get_owned_listing(db: Session, car_id: int, user: User) -> Listings:
 
 def get_listing(db: Session, listing_id: int, public_only: bool = True) -> Listings:
     query = db.query(Listings).filter(Listings.id == listing_id, Listings.deleted_at.is_(None))
-    if public_only: query = query.filter(Listings.listing_status == ListingStatus.ACTIVE)
+    if public_only: 
+        query = query.filter(Listings.listing_status == ListingStatus.ACTIVE)
     listing = query.first()
-    if not listing: raise LookupError("Listing not found.")
+    if not listing: 
+        raise LookupError("Listing not found.")
     return listing
 
+# get all infomations for car
+def get_listings(
+    db: Session,
+    listing_id: int,
+    public_only: bool = True,
+) -> Listings:
+
+    query = (
+        db.query(Listings)
+        .options(
+            selectinload(Listings.car)
+            .selectinload(Cars.variant)
+            .selectinload(CarVariants.model)
+            .selectinload(CarModels.brand),
+
+            selectinload(Listings.car)
+            .selectinload(Cars.media),
+
+            selectinload(Listings.car)
+            .selectinload(Cars.features),
+        )
+        .filter(
+            Listings.id == listing_id,
+            Listings.deleted_at.is_(None),
+        )
+    )
+
+    if public_only:
+        query = query.filter(
+            Listings.listing_status == ListingStatus.ACTIVE
+        )
+
+    listing = query.first()
+
+    if not listing:
+        raise LookupError("Listing not found.")
+
+    return listing
 
 def update_listing(db: Session, car_id: int, user: User, values: dict) -> Listings:
     listing = get_owned_listing(db, car_id, user)
@@ -76,6 +121,7 @@ def add_favorite(db: Session, car_id: int, user: User) -> Favorites:
     if favorite:
         raise ValueError("Car is already in favorites.")
     favorite = Favorites(user_id=user.id, car_id=car_id); 
+   
     db.add(favorite)
     db.commit()
     db.refresh(favorite)
@@ -92,6 +138,8 @@ def remove_favorite(db: Session, car_id: int, user: User) -> None:
 
 def list_favorites(db: Session, user: User) -> list[Favorites]:
     return db.query(Favorites).filter(Favorites.user_id == user.id).order_by(Favorites.created_at.desc()).all()
+
+
 
 
 def _get_listing_for_car(db: Session, car_id: int) -> Listings:

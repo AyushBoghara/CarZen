@@ -31,6 +31,7 @@ app.add_middleware(
 app.include_router(h.router,tags=["home"])
 # Register and login auth routes
 app.include_router(authRouter.router,prefix="/v1/auth",tags=["auth"])
+
 app.include_router(users_management.router,prefix="/v1",tags=["users"])
 app.include_router(cars.router,prefix="/v1",tags=["cars"])
 app.include_router(catalog.router,prefix="/v1")
