@@ -17,7 +17,7 @@ CAR_COLUMNS = {
     "verified_by_id": "BIGINT NULL",
 }
 
-CAR_CONDITION_ENUM = "ENUM('excellent','GOOD','good','poor','new','oldCar')"
+CAR_CONDITION_ENUM = "ENUM('excellent','good','poor','new','oldCar')"
 
 def upgrade() -> None:
     inspector = inspect(engine)
