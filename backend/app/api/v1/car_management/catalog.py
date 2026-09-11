@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.auth_dependencies import get_current_admin
+from app.core.auth_dependencies import get_current_admin, get_current_user
 from app.database.connection.conn import get_db
 from app.models.enums.CarEnums import BodyType, FuelType, TransmissionType
 from app.models.users import User
@@ -37,30 +37,30 @@ def get_brand(brand_id: int, db: Session = Depends(get_db)):
         _error(exc)
         
 # create a car brands 
-@router.post("/admin/car-brands", response_model=CarBrandResponse, status_code=201, tags=["Car Brands"])
-def create_brand(payload: CarBrandCreate, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+@router.post("/car-brands", response_model=CarBrandResponse, status_code=201, tags=["Car Brands"])
+def create_brand(payload: CarBrandCreate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     try: 
         return catalog_service.create_brand(db, payload.model_dump())
     except Exception as exc: 
         _error(exc)
 
-@router.patch("/admin/car-brands/{brand_id}", response_model=CarBrandResponse, tags=["Car Brands"])
-def update_brand(brand_id: int, payload: CarBrandUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+@router.patch("/car-brands/{brand_id}", response_model=CarBrandResponse, tags=["Car Brands"])
+def update_brand(brand_id: int, payload: CarBrandUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     try: 
         return catalog_service.update_brand(db, brand_id, payload.model_dump(exclude_unset=True))
     except Exception as exc:
         _error(exc)
 
-@router.delete("/admin/car-brands/{brand_id}", response_model=MessageResponse, tags=["Car Brands"])
-def delete_brand(brand_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+@router.delete("/car-brands/{brand_id}", response_model=MessageResponse, tags=["Car Brands"])
+def delete_brand(brand_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     try: 
         catalog_service.delete_brand(db, brand_id)
         return {"message": "Car brand deleted successfully."}
     except Exception as exc: 
         _error(exc)
 
-@router.patch("/admin/car-brands/{brand_id}/status", response_model=CarBrandResponse, tags=["Car Brands"])
-def set_brand_status(brand_id: int, payload: ActiveStatusUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+@router.patch("/car-brands/{brand_id}/status", response_model=CarBrandResponse, tags=["Car Brands"])
+def set_brand_status(brand_id: int, payload: ActiveStatusUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     try: 
         return catalog_service.update_brand(db, brand_id, payload.model_dump())
     except Exception as exc: 
@@ -88,30 +88,30 @@ def list_brand_models(brand_id: int, page: int = Query(1, ge=1), limit: int = Qu
     except Exception as exc:
         _error(exc)
 
-@router.post("/admin/car-models", response_model=CarModelResponse, status_code=201, tags=["Car Models"])
-def create_model(payload: CarModelCreate, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+@router.post("/car-models", response_model=CarModelResponse, status_code=201, tags=["Car Models"])
+def create_model(payload: CarModelCreate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     try: 
         return catalog_service.create_model(db, payload.model_dump())
     except Exception as exc:
         _error(exc)
 
-@router.patch("/admin/car-models/{model_id}", response_model=CarModelResponse, tags=["Car Models"])
-def update_model(model_id: int, payload: CarModelUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+@router.patch("/car-models/{model_id}", response_model=CarModelResponse, tags=["Car Models"])
+def update_model(model_id: int, payload: CarModelUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     try: 
         return catalog_service.update_model(db, model_id, payload.model_dump(exclude_unset=True))
     except Exception as exc: 
         _error(exc)
 
-@router.delete("/admin/car-models/{model_id}", response_model=MessageResponse, tags=["Car Models"])
-def delete_model(model_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+@router.delete("/car-models/{model_id}", response_model=MessageResponse, tags=["Car Models"])
+def delete_model(model_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     try: 
         catalog_service.delete_model(db, model_id); 
         return {"message": "Car model deleted successfully."}
     except Exception as exc:
         _error(exc)
 
-@router.patch("/admin/car-models/{model_id}/status", response_model=CarModelResponse, tags=["Car Models"])
-def set_model_status(model_id: int, payload: ActiveStatusUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+@router.patch("/car-models/{model_id}/status", response_model=CarModelResponse, tags=["Car Models"])
+def set_model_status(model_id: int, payload: ActiveStatusUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     try: 
         return catalog_service.update_model(db, model_id, payload.model_dump())
     except Exception as exc: 
@@ -137,22 +137,22 @@ def list_model_variants(model_id: int, page: int = Query(1, ge=1), limit: int = 
     except Exception as exc: 
         _error(exc)
 
-@router.post("/admin/car-variants", response_model=CarVariantResponse, status_code=201, tags=["Car Variants"])
-def create_variant(payload: CarVariantCreate, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+@router.post("/car-variants", response_model=CarVariantResponse, status_code=201, tags=["Car Variants"])
+def create_variant(payload: CarVariantCreate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     try: 
         return catalog_service.create_variant(db, payload.model_dump())
     except Exception as exc: 
         _error(exc)
 
-@router.patch("/admin/car-variants/{variant_id}", response_model=CarVariantResponse, tags=["Car Variants"])
-def update_variant(variant_id: int, payload: CarVariantUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+@router.patch("/car-variants/{variant_id}", response_model=CarVariantResponse, tags=["Car Variants"])
+def update_variant(variant_id: int, payload: CarVariantUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     try: 
         return catalog_service.update_variant(db, variant_id, payload.model_dump(exclude_unset=True))
     except Exception as exc:
         _error(exc)
 
-@router.delete("/admin/car-variants/{variant_id}", response_model=MessageResponse, tags=["Car Variants"])
-def delete_variant(variant_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+@router.delete("/car-variants/{variant_id}", response_model=MessageResponse, tags=["Car Variants"])
+def delete_variant(variant_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     try: 
         catalog_service.delete_variant(db, variant_id); 
         return {"message": "Car variant deleted successfully."}

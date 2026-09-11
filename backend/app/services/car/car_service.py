@@ -18,7 +18,8 @@ from app.services.car.catalog_service import get_variant, paginate
 
 def create_car(db: Session, owner: User, values: dict) -> Cars:
     values = _normalize_optional_identifiers(values)
-    _validate_creator_role(owner, values["condition"])
+    
+    # _validate_creator_role(owner, values["condition"])  #user this fuunction for check the seller and reseller two different sellers
     
     _validate_years(values, None)
     
@@ -248,7 +249,7 @@ def _ensure_approvable(car: Cars) -> None:
         )
         
 def _validate_creator_role(owner: User, condition: CarCondition) -> None:
-    if owner.role == UserRoles.USER:
+    if owner.role == UserRoles.SELLER:
         if condition != CarCondition.NEW:
             raise PermissionError("Sellers can add only new cars. Set condition to 'new'.")
         return
@@ -260,8 +261,8 @@ def _validate_creator_role(owner: User, condition: CarCondition) -> None:
 
 
 def _validate_resale_details(owner: User, values: dict) -> None:
-    if owner.role != UserRoles.RESELLER:
-        return
+    # if owner.role != UserRoles.RESELLER:
+    #     return
     required = ["registration_number", "vin_number", "registration_year", "ownership_type"]
     missing = [field for field in required if values.get(field) is None]
     if missing:
