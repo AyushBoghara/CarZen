@@ -42,15 +42,8 @@ def register_user(db:Session,user:UserRegister):
         raise UserNameAlreadyExistsError("This username is already taken. Please try another or log in.")
 
     # hash password in user for security purpose 
-    try:
-        is_valid = is_password_valid(user.password)
-        if is_valid == True:
-            hashed_password = hash_password(user.password)
-    except WeakPasswordError as error:
-        raise WeakPasswordError(f"Registration Failed: {error}")
-
-   
-    now = datetime.now(timezone.utc)
+    is_password_valid(user.password)
+    hashed_password = hash_password(user.password)
 
     # store data in database 
     db_user = User(
@@ -64,7 +57,9 @@ def register_user(db:Session,user:UserRegister):
         status=UserStatus.ACTIVE,
         profile_image_url = user.profile_image_url
     )
+    
     db.add(db_user)
+    
     try:
         db.commit()
         db.refresh(db_user)
@@ -97,16 +92,9 @@ def register_admin(db:Session,user:UserRegister):
         raise UserNameAlreadyExistsError("This username is already taken. Please try another or log in.")
 
     # hash password in user for security purpose 
-    try:
-        is_valid = is_password_valid(user.password)
-        if is_valid == True:
-            hashed_password = hash_password(user.password)
-    except WeakPasswordError as error:
-        raise WeakPasswordError(f"Registration Failed: {error}")
-
+    is_password_valid(user.password)
+    hashed_password = hash_password(user.password)
    
-    now = datetime.now(timezone.utc)
-
     # store data in database 
     db_user = User(
         first_name = user.first_name,
@@ -120,10 +108,14 @@ def register_admin(db:Session,user:UserRegister):
         profile_image_url = user.profile_image_url
     )
     db.add(db_user)
+    
     try:
+        
         db.commit()
         db.refresh(db_user)
+        
     except IntegrityError as e:
+        
         db.rollback()
         raise ValueError("Failed to register user due to duplicate username or email.") from e
     
@@ -153,20 +145,41 @@ def login(db:Session,user:UserLogin):
     
     return {"access_token":token,"token_type":"bearer"}
 
-def is_password_valid(password):
+def is_password_valid(password: str) -> bool:
+
     if len(password) < 8:
-        raise WeakPasswordError("Password is too short. It must be at least 8 characters long.")
-        
+        raise WeakPasswordError(
+            "Password is too short. "
+            "It must be at least 8 characters long."
+        )
+
+    # if len(password.encode("utf-8")) > 72:
+    #     raise WeakPasswordError(
+    #         "Password cannot be longer than 72 bytes."
+    #     )
+
     if not re.search(r"[A-Z]", password):
-        raise WeakPasswordError("Password must contain at least one uppercase letter (A-Z).")
-        
+        raise WeakPasswordError(
+            "Password must contain at least "
+            "one uppercase letter (A-Z)."
+        )
+
     if not re.search(r"[a-z]", password):
-        raise WeakPasswordError("Password must contain at least one lowercase letter (a-z).")
+        raise WeakPasswordError(
+            "Password must contain at least "
+            "one lowercase letter (a-z)."
+        )
 
     if not re.search(r"\d", password):
-        raise WeakPasswordError("Password must contain at least one number (0-9).")
-        
+        raise WeakPasswordError(
+            "Password must contain at least "
+            "one number (0-9)."
+        )
+
     if not re.search(r"[\W_]", password):
-        raise WeakPasswordError("Password must contain at least one special character (e.g., !, @, #, $, %).")
-        
+        raise WeakPasswordError(
+            "Password must contain at least "
+            "one special character."
+        )
+
     return True

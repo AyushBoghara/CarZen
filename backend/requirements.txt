@@ -1,11 +1,18 @@
-fastapi[standard]==0.141.1          # Web framework
-uvicorn[standard]==0.52.3  # ASGI server with extras (reload, websockets, etc.)
-SQLAlchemy==2.0.52         # ORM for database models
-PyMySQL==1.2.0             # MySQL database driver
-python-dotenv==1.2.3       # Load environment variables from .env
-pydantic-settings==2.15.0  # Manage app settings via Pydantic
+fastapi[standard]==0.141.1
+uvicorn[standard]==0.52.3
+
+SQLAlchemy==2.0.52
+PyMySQL==1.2.0
+
+python-dotenv==1.2.3
+pydantic-settings==2.15.0
+
 python-jose==3.5.0
+
 pytest-httpx==0.36.2
 httpx==0.28.1
-passlib[bcrypt]>=1.7.4
+
+passlib[bcrypt]==1.7.4
+bcrypt==4.3.0
+
 python-multipart>=0.0.20
