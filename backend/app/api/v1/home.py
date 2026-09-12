@@ -4,4 +4,4 @@ router = APIRouter()
 
 @router.get("/")
 def home():
-    return {"message":"API is working successfully! For My SmartCarX"}
+    return {"message":"API is working successfully! For My CarZen"}
