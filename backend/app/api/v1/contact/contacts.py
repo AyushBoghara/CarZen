@@ -6,7 +6,7 @@ from app.core.auth_dependencies import get_current_user
 from app.database.connection.conn import get_db
 from app.models.users import User
 from app.schemas.users_schema import MessageResponse
-from app.schemas.contact_schema import ContactCreate,ContactUpdate,ContactVisibility,ContactVisibilityUpdate,SellerContactResponse
+from app.schemas.contact_schema import ContactCreate,ContactUpdate,ContactVisibilityUpdate,SellerContactResponse
 from app.services.contact import contacts_service
 router = APIRouter()
 
