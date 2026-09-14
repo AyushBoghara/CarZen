@@ -5,8 +5,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.car_brands import CarBrands
-from app.models.car_features import CarFeatures
-from app.models.car_media import CarMedia
 from app.models.car_models import CarModels
 from app.models.car_variants import CarVariants
 from app.models.cars import Cars
@@ -28,6 +26,7 @@ def create_car(db: Session, owner: User, values: dict) -> Cars:
     _ensure_unique_identifiers(db, values)
     car = Cars(owner_id=owner.id, approval_status=CarApprovalStatus.PENDING_APPROVAL, **values)
     db.add(car)
+    
     try:
         db.commit()
     except IntegrityError as exc:
@@ -61,18 +60,27 @@ def get_owned_car(db: Session, car_id: int, user: User, allow_admin: bool = Fals
 def update_car(db: Session, car_id: int, user: User, values: dict, allow_admin: bool = False) -> Cars:
     car = get_owned_car(db, car_id, user, allow_admin)
     values = _normalize_optional_identifiers(values)
-    if not values: raise ValueError("Provide at least one field to update.")
+    if not values: 
+        raise ValueError("Provide at least one field to update.")
     _validate_years(values, car)
-    if "variant_id" in values: _validate_variant(db, values["variant_id"])
+    
+    if "variant_id" in values: 
+        _validate_variant(db, values["variant_id"])
+        
     _ensure_unique_identifiers(db, values, car.id)
+   
     important = {"variant_id", "registration_number", "vin_number", "manufacturing_year", "fuel_type", "transmission"}
-    for field, value in values.items(): setattr(car, field, value)
+    
+    for field, value in values.items(): 
+        setattr(car, field, value)
+        
     if important.intersection(values) and car.approval_status in {CarApprovalStatus.APPROVED, CarApprovalStatus.REJECTED}:
         car.approval_status = CarApprovalStatus.PENDING_APPROVAL
         car.is_verified = False
         car.rejection_reason = None
         car.verified_at = None
         car.verified_by_id = None
+        
     car.updated_at = datetime.now(timezone.utc)
     try:
         db.commit()

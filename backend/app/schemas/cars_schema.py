@@ -8,13 +8,11 @@ from app.models.enums.CarEnums import CarApprovalStatus, CarCondition, FuelType,
 
 T = TypeVar("T")
 
-
 class PaginationMeta(BaseModel):
     page: int
     limit: int
     total: int
     total_pages: int
-
 
 class PaginatedResponse(BaseModel, Generic[T]):
     data: list[T]

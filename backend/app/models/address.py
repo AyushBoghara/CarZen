@@ -13,7 +13,7 @@ from sqlalchemy.orm import relationship
 from app.database.connection import Base
 
 
-class Addresses(Base):
+class Address(Base):
     __tablename__ = "addresses"
 
     id = Column(
@@ -98,4 +98,4 @@ class Addresses(Base):
     
         # Relationships
     user = relationship("User", back_populates="addresses", foreign_keys=[user_id])
- 
+    contacts = relationship("Contact",back_populates="address",foreign_keys="Contact.address_id" )

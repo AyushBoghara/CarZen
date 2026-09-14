@@ -97,7 +97,8 @@ def delete_listing(db: Session, car_id: int, user: User) -> None:
 
 
 def publish_listing(db: Session, car_id: int, user: User, publish: bool) -> Listings:
-    listing = get_owned_listing(db, car_id, user); car = car_service.get_owned_car(db, car_id, user)
+    listing = get_owned_listing(db, car_id, user);
+    car = car_service.get_owned_car(db, car_id, user)
     if publish:
         if not car.is_verified or car.approval_status not in {CarApprovalStatus.APPROVED, CarApprovalStatus.PUBLISHED}:
             raise ValueError("Only approved cars can be published.")
@@ -105,7 +106,8 @@ def publish_listing(db: Session, car_id: int, user: User, publish: bool) -> List
     else:
         listing.listing_status = ListingStatus.DRAFT
     db.commit()
-    db.refresh(listing); return listing
+    db.refresh(listing)
+    return listing
 
 
 def list_public_listings(db: Session, page: int, limit: int, **filters):

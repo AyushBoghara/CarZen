@@ -48,7 +48,8 @@ def update_brand(db: Session, brand_id: int, values: dict) -> CarBrands:
     if not values:
         raise ValueError("Provide at least one field to update.")
     _ensure_brand_unique(db, values, brand_id)
-    for field, value in values.items(): setattr(brand, field, value)
+    for field, value in values.items(): 
+        setattr(brand, field, value)
     brand.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(brand)
@@ -115,7 +116,8 @@ def delete_model(db: Session, model_id: int) -> None:
 
 def get_variant(db: Session, variant_id: int, active_only: bool = False) -> CarVariants:
     query = db.query(CarVariants).filter(CarVariants.id == variant_id, CarVariants.deleted_at.is_(None))
-    if active_only: query = query.join(CarModels).join(CarBrands).filter(CarModels.deleted_at.is_(None), CarModels.is_active.is_(True), CarBrands.deleted_at.is_(None), CarBrands.is_active.is_(True))
+    if active_only:
+        query = query.join(CarModels).join(CarBrands).filter(CarModels.deleted_at.is_(None), CarModels.is_active.is_(True), CarBrands.deleted_at.is_(None), CarBrands.is_active.is_(True))
     variant = query.first()
     if not variant:
         raise LookupError("Car variant not found.")

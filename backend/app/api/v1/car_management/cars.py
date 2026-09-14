@@ -17,8 +17,10 @@ router = APIRouter()
 
 def _raise(exc: Exception):
     if isinstance(exc, LookupError) and "not among the defined enum values" not in str(exc): code = status.HTTP_404_NOT_FOUND
-    elif isinstance(exc, PermissionError): code = status.HTTP_403_FORBIDDEN
-    elif isinstance(exc, ValueError): code = status.HTTP_409_CONFLICT
+    elif isinstance(exc, PermissionError): 
+        code = status.HTTP_403_FORBIDDEN
+    elif isinstance(exc, ValueError): 
+        code = status.HTTP_409_CONFLICT
     else:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

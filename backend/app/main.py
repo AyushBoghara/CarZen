@@ -11,6 +11,8 @@ from app.api.v1.users import users_management
 from app.api.v1.car_management import cars
 from app.api.v1.car_management import catalog
 from app.api.v1.car_management import marketplace
+from app.api.v1.addresss import addresses
+from app.api.v1.contact import contacts
 
 #create tables 
 Base.metadata.create_all(bind=engine)
@@ -36,3 +38,9 @@ app.include_router(users_management.router,prefix="/v1",tags=["users"])
 app.include_router(cars.router,prefix="/v1",tags=["cars"])
 app.include_router(catalog.router,prefix="/v1")
 app.include_router(marketplace.router,prefix="/v1")
+
+# address router 
+app.include_router(addresses.router,prefix="/v1",tags=["address"])
+
+# contacts router
+app.include_router(contacts.router,prefix="/v1",tags=["contacts"])
