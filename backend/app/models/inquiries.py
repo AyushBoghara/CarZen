@@ -9,11 +9,8 @@ from sqlalchemy import (
     Enum,
     ForeignKey
 )
-
 from enum import Enum as PyEnum
-
 from sqlalchemy.orm import relationship
-
 from app.database.connection import Base
 
 class InquiryStatus(str, PyEnum):
