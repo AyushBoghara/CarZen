@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.auth_dependencies import get_current_user
 from app.database.connection.conn import get_db
 from app.models.enums.CarEnums import CarCondition, FuelType, TransmissionType
+from app.models.enums.ListingEnums import ListingSort
 from app.models.users import User
 from app.schemas.cars_schema import PaginatedResponse
 from app.schemas.marketplace_schema import FavoriteResponse, ListingCreate, ListingResponse, ListingUpdate,ListingResponseSecond
@@ -60,9 +61,18 @@ def unpublish_listing(car_id: int, db: Session = Depends(get_db), user: User = D
     except Exception as exc: _raise(exc)
 
 @router.get("/listings", response_model=PaginatedResponse[ListingResponse], tags=["Listings"])
-def list_public_listings(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=100), brand_id: int | None = None, model_id: int | None = None, variant_id: int | None = None, fuel_type: FuelType | None = None, transmission: TransmissionType | None = None, city: str | None = None, state: str | None = None, min_price: Decimal | None = Query(None, ge=0), max_price: Decimal | None = Query(None, ge=0), min_year: int | None = Query(None, ge=1886), max_year: int | None = Query(None, ge=1886), min_mileage: Decimal | None = Query(None, ge=0), max_mileage: Decimal | None = Query(None, ge=0), condition: CarCondition | None = None, db: Session = Depends(get_db)):
-    filters = dict(brand_id=brand_id, model_id=model_id, variant_id=variant_id, fuel_type=fuel_type, transmission=transmission, city=city, state=state, min_price=min_price, max_price=max_price, min_year=min_year, max_year=max_year, min_mileage=min_mileage, max_mileage=max_mileage, condition=condition)
-    data, pagination = marketplace_service.list_public_listings(db, page, limit, **filters)
+def list_public_listings(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=100), search: str | None = Query(None, min_length=1, max_length=100), brand_id: int | None = None, model_id: int | None = None, variant_id: int | None = None, fuel_type: FuelType | None = None, transmission: TransmissionType | None = None, city: str | None = None, state: str | None = None, min_price: Decimal | None = Query(None, ge=0), max_price: Decimal | None = Query(None, ge=0), min_year: int | None = Query(None, ge=1886), max_year: int | None = Query(None, ge=1886), min_mileage: Decimal | None = Query(None, ge=0), max_mileage: Decimal | None = Query(None, ge=0), condition: CarCondition | None = None, sort_by: ListingSort = ListingSort.NEWEST, db: Session = Depends(get_db)):
+    
+    if max_price is not None and min_price is not None and max_price < min_price:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "max_price must be greater than or equal to min_price.")
+    if max_year is not None and min_year is not None and max_year < min_year:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "max_year must be greater than or equal to min_year.")
+    if max_mileage is not None and min_mileage is not None and max_mileage < min_mileage:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "max_mileage must be greater than or equal to min_mileage.")
+    filters = dict(search=search, brand_id=brand_id, model_id=model_id, variant_id=variant_id, fuel_type=fuel_type, transmission=transmission, city=city, state=state, min_price=min_price, max_price=max_price, min_year=min_year, max_year=max_year, min_mileage=min_mileage, max_mileage=max_mileage, condition=condition)
+    
+    data, pagination = marketplace_service.list_public_listings(db, page, limit, sort_by, **filters)
+    
     return {"data": data, "pagination": pagination}
 
 @router.get("/listings/{listing_id}", response_model=ListingResponseSecond, tags=["Listings"])

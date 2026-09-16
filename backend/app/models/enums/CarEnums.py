@@ -6,6 +6,7 @@ class BodyType(str, Enum):
     SEDAN = "sedan"
     SUV = "suv"
     MUV = "muv"
+    MPV = "mpv"
     COUPE = "coupe"
     CONVERTIBLE = "convertible"
     PICKUP = "pickup"

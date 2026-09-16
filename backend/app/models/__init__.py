@@ -8,6 +8,8 @@ from app.models.car_variants import CarVariants
 from app.models.cars import Cars
 from app.models.favorites import Favorites
 from app.models.inquiries import Inquiries
+from app.models.inquiry_messages import InquiryMessages
+from app.models.listing_views import ListingViews
 from app.models.listings import Listings
 from app.models.notifications import Notifications
 from app.models.ownership_history import OwnershipHistory

@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.enums.CarEnums import CarApprovalStatus
-from app.models.enums.ListingEnums import ListingStatus
+from app.models.enums.ListingEnums import ListingSort, ListingStatus
 from app.models.cars import Cars
 from app.models.favorites import Favorites
 from app.models.listings import Listings
@@ -110,11 +110,33 @@ def publish_listing(db: Session, car_id: int, user: User, publish: bool) -> List
     return listing
 
 
-def list_public_listings(db: Session, page: int, limit: int, **filters):
+def list_public_listings(
+    db: Session,
+    page: int,
+    limit: int,
+    sort_by: ListingSort = ListingSort.NEWEST,
+    **filters,
+):
+    min_price = filters.pop("min_price", None)
+    max_price = filters.pop("max_price", None)
     query = db.query(Listings).join(Listings.car).filter(Listings.deleted_at.is_(None), Listings.listing_status == ListingStatus.ACTIVE, Cars.is_verified.is_(True))
     car_query = car_service._filtered_query(db, **filters).with_entities(Cars.id)
     query = query.filter(Listings.car_id.in_(car_query))
-    return paginate(query.order_by(Listings.listed_at.desc()), page, limit)
+    
+    if min_price is not None:
+        query = query.filter(Listings.asking_price >= min_price)
+    if max_price is not None:
+        query = query.filter(Listings.asking_price <= max_price)
+
+    order_by = {
+        ListingSort.NEWEST: (Listings.listed_at.desc(), Listings.id.desc()),
+        ListingSort.PRICE_LOW_TO_HIGH: (Listings.asking_price.asc(), Listings.id.desc()),
+        ListingSort.PRICE_HIGH_TO_LOW: (Listings.asking_price.desc(), Listings.id.desc()),
+        ListingSort.YEAR_NEWEST: (Cars.manufacturing_year.desc(), Listings.id.desc()),
+        ListingSort.MILEAGE_LOW_TO_HIGH: (Cars.mileage_km.asc(), Listings.id.desc()),
+    }[sort_by]
+    
+    return paginate(query.order_by(*order_by), page, limit)
 
 
 def add_favorite(db: Session, car_id: int, user: User) -> Favorites:

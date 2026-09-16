@@ -39,10 +39,11 @@ class User(Base):
 
     inquiries_made = relationship("Inquiries", back_populates="buyer", foreign_keys="Inquiries.buyer_id")
     inquiries_received = relationship("Inquiries", back_populates="seller", foreign_keys="Inquiries.seller_id")
+    listing_views = relationship("ListingViews", back_populates="buyer", foreign_keys="ListingViews.buyer_id")
+    inquiry_messages = relationship("InquiryMessages", back_populates="sender", foreign_keys="InquiryMessages.sender_id")
 
     transactions_bought = relationship("Transactions", back_populates="buyer", foreign_keys="Transactions.buyer_id")
     transactions_sold = relationship("Transactions", back_populates="seller", foreign_keys="Transactions.seller_id")
 
     price_predictions = relationship("PricePredictions", back_populates="user", foreign_keys="PricePredictions.user_id")
     reviews = relationship("Reviews", back_populates="user", foreign_keys="Reviews.user_id")
-    

@@ -16,12 +16,10 @@ from sqlalchemy.orm import relationship
 
 from app.database.connection import Base
 
-
 class InquiryStatus(str, PyEnum):
     OPEN = "open"
     CONTACTED = "contacted"
     CLOSED = "closed"
-
 
 class Inquiries(Base):
     __tablename__ = "inquiries"
@@ -81,3 +79,4 @@ class Inquiries(Base):
     listing = relationship("Listings", back_populates="inquiries", foreign_keys=[listing_id])
     buyer = relationship("User", back_populates="inquiries_made", foreign_keys=[buyer_id])
     seller = relationship("User", back_populates="inquiries_received", foreign_keys=[seller_id])
+    messages = relationship("InquiryMessages", back_populates="inquiry", foreign_keys="InquiryMessages.inquiry_id")

@@ -249,7 +249,7 @@ A car is the physical vehicle; a listing is its sale advertisement. One non-dele
 | DELETE | `/v1/cars/{car_id}/listing`           | Owner  | Soft-delete own listing.                             |
 | POST   | `/v1/cars/{car_id}/listing/publish`   | Owner  | Publish only when the car is approved and verified.  |
 | POST   | `/v1/cars/{car_id}/listing/unpublish` | Owner  | Return listing to draft.                             |
-| GET    | `/v1/listings`                        | Public | Browse active listings of verified cars.             |
+| GET    | `/v1/listings`                        | Public | Browse active listings of verified cars.   |
 | GET    | `/v1/listings/{listing_id}`           | Public | Read an active listing and increment its view count. |
 
 Create body:
@@ -264,6 +264,32 @@ Create body:
   "expiry_date": "2027-01-31T23:59:59"
 }
 ```
+# Search 
+
+cURL example:
+
+```
+GET http://127.0.0.1:8000/v1/listings?brand_id=1&model_id=2&fuel_type=petrol&transmission=automatic&min_price=500000&max_price=1500000&condition=oldCar&sort_by=price_low_to_high&page=1&limit=20
+```
+Available query parameters:
+- search=Toyota
+- brand_id=1
+- model_id=2
+- variant_id=5
+- fuel_type=petrol|diesel|cng|electric|hybrid
+- transmission=manual|automatic|amt|cvt|dct
+- condition=new|oldCar|excellent|good|fair|poor
+- min_price=500000
+- max_price=1500000
+- min_year=2020
+- max_year=2025
+- min_mileage=0
+- max_mileage=50000
+- city=Ahmedabad
+- state=Gujarat
+- sort_by=newest|price_low_to_high|price_high_to_low|year_newest|mileage_low_to_high
+- page=1
+- limit=20
 
 Public listing filters: `page`, `limit`, `brand_id`, `model_id`, `variant_id`, `fuel_type`, `transmission`, `city`, `state`, `min_price`, `max_price`, `min_year`, `max_year`, `min_mileage`, `max_mileage`, and `condition`.
 

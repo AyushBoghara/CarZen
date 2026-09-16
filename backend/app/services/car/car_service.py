@@ -153,7 +153,7 @@ def detail_payload(car: Cars) -> dict:
 def _filtered_query(db: Session, search=None, verification_status=None, brand_id=None, model_id=None, variant_id=None, fuel_type=None, transmission=None, city=None, state=None, min_price=None, max_price=None, min_year=None, max_year=None, min_mileage=None, max_mileage=None, condition=None, approval_status=None):
     query = db.query(Cars).join(CarVariants).join(CarModels).join(CarBrands).filter(Cars.deleted_at.is_(None))
     if search:
-        query = query.filter(or_(Cars.registration_number.ilike(f"%{search}%"), Cars.vin_number.ilike(f"%{search}%"), CarModels.name.ilike(f"%{search}%"), CarBrands.name.ilike(f"%{search}%")))
+        query = query.filter(or_(Cars.registration_number.ilike(f"%{search}%"), Cars.vin_number.ilike(f"%{search}%"), CarBrands.name.ilike(f"%{search}%"), CarModels.name.ilike(f"%{search}%"), CarVariants.variant_name.ilike(f"%{search}%")))
     if verification_status is not None:
         query = query.filter(Cars.is_verified.is_(verification_status))
     if approval_status: 
