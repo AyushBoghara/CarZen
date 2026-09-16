@@ -44,6 +44,8 @@ class User(Base):
 
     transactions_bought = relationship("Transactions", back_populates="buyer", foreign_keys="Transactions.buyer_id")
     transactions_sold = relationship("Transactions", back_populates="seller", foreign_keys="Transactions.seller_id")
+    orders_bought = relationship("Orders", back_populates="buyer", foreign_keys="Orders.buyer_id")
+    orders_sold = relationship("Orders", back_populates="seller", foreign_keys="Orders.seller_id")
 
     price_predictions = relationship("PricePredictions", back_populates="user", foreign_keys="PricePredictions.user_id")
     reviews = relationship("Reviews", back_populates="user", foreign_keys="Reviews.user_id")

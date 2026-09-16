@@ -9,9 +9,11 @@ from app.models.car_models import CarModels
 from app.models.car_variants import CarVariants
 from app.models.cars import Cars
 from app.models.enums.CarEnums import CarApprovalStatus, CarCondition
+from app.models.enums.OrderEnums import NotificationType
 from app.models.enums.UserRoles import UserRoles
 from app.models.users import User
 from app.services.car.catalog_service import get_variant, paginate
+from app.services.notifications import notification_service
 
 
 def create_car(db: Session, owner: User, values: dict) -> Cars:
@@ -26,6 +28,20 @@ def create_car(db: Session, owner: User, values: dict) -> Cars:
     _ensure_unique_identifiers(db, values)
     car = Cars(owner_id=owner.id, approval_status=CarApprovalStatus.PENDING_APPROVAL, **values)
     db.add(car)
+    db.flush()
+    for (admin_id,) in db.query(User.id).filter(
+        User.role == UserRoles.ADMIN,
+        User.deleted_at.is_(None),
+    ).all():
+        notification_service.create_notification(
+            db,
+            admin_id,
+            NotificationType.ADMIN,
+            "Car awaiting approval",
+            "A newly submitted car is waiting for admin approval.",
+            car.id,
+            "car",
+        )
     
     try:
         db.commit()
@@ -110,6 +126,15 @@ def approve_car(db: Session, car_id: int, admin: User) -> Cars:
     car.verified_at = datetime.now(timezone.utc)
     car.verified_by_id = admin.id
     car.updated_at = car.verified_at
+    notification_service.create_notification(
+        db,
+        car.owner_id,
+        NotificationType.LISTING,
+        "Car approved",
+        "Your car has been approved and can now be published as a listing.",
+        car.id,
+        "car",
+    )
     db.commit()
     db.refresh(car)
     
@@ -124,6 +149,15 @@ def reject_car(db: Session, car_id: int, admin: User, reason: str) -> Cars:
     car.verified_at = datetime.now(timezone.utc)
     car.verified_by_id = admin.id
     car.updated_at = car.verified_at
+    notification_service.create_notification(
+        db,
+        car.owner_id,
+        NotificationType.LISTING,
+        "Car rejected",
+        "Your car listing requires changes before it can be approved.",
+        car.id,
+        "car",
+    )
     db.commit()
     return get_car(db, car_id)
 

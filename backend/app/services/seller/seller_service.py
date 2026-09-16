@@ -1,10 +1,12 @@
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.enums.UserRoles import UserRoles
+from app.models.enums.OrderEnums import NotificationType
 from app.models.inquiries import Inquiries, InquiryStatus
 from app.models.inquiry_messages import InquiryMessages
 from app.models.users import User
 from app.services.car.catalog_service import paginate
+from app.services.notifications import notification_service
 
 
 SELLER_ROLES = {UserRoles.SELLER, UserRoles.RESELLER}
@@ -48,6 +50,15 @@ def update_inquiry_status(
 ) -> Inquiries:
     inquiry = get_seller_inquiry(db, inquiry_id, seller)
     inquiry.status = inquiry_status
+    notification_service.create_notification(
+        db,
+        inquiry.buyer_id,
+        NotificationType.INQUIRY,
+        "Inquiry status updated",
+        f"Your inquiry is now {inquiry_status.value}.",
+        inquiry.id,
+        "inquiry",
+    )
     db.commit()
     return get_seller_inquiry(db, inquiry_id, seller)
 
@@ -63,6 +74,15 @@ def send_seller_message(
     if inquiry.status == InquiryStatus.OPEN:
         inquiry.status = InquiryStatus.CONTACTED
     db.add(message)
+    notification_service.create_notification(
+        db,
+        inquiry.buyer_id,
+        NotificationType.INQUIRY,
+        "Seller replied to your inquiry",
+        f"The seller replied about {inquiry.listing.title}.",
+        inquiry.id,
+        "inquiry",
+    )
     db.commit()
     return (
         db.query(InquiryMessages)

@@ -216,6 +216,7 @@ class Cars(Base):
     ownership_history = relationship("OwnershipHistory", back_populates="car", foreign_keys="OwnershipHistory.car_id")
     service_records = relationship("ServiceRecords", back_populates="car", foreign_keys="ServiceRecords.car_id")
     favorites = relationship("Favorites", back_populates="car", foreign_keys="Favorites.car_id")
+    orders = relationship("Orders", back_populates="car", foreign_keys="Orders.car_id")
     transactions = relationship("Transactions", back_populates="car", foreign_keys="Transactions.car_id")
     price_predictions = relationship("PricePredictions", back_populates="car", foreign_keys="PricePredictions.car_id")
     reviews = relationship("Reviews", back_populates="car", foreign_keys="Reviews.car_id")

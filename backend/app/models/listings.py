@@ -107,6 +107,7 @@ class Listings(Base):
  
     inquiries = relationship("Inquiries", back_populates="listing", foreign_keys="Inquiries.listing_id")
     views = relationship("ListingViews", back_populates="listing", foreign_keys="ListingViews.listing_id")
+    orders = relationship("Orders", back_populates="listing", foreign_keys="Orders.listing_id")
     transactions = relationship("Transactions", back_populates="listing", foreign_keys="Transactions.listing_id")
     reviews = relationship("Reviews", back_populates="listing", foreign_keys="Reviews.listing_id")
     reports = relationship("Reports", back_populates="listing", foreign_keys="Reports.listing_id")

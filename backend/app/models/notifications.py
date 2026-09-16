@@ -65,6 +65,6 @@ class Notifications(Base):
         default=datetime.datetime.utcnow
     )
     
-        # Relationships
+    # Relationships
     user = relationship("User", back_populates="notifications", foreign_keys=[user_id])
  

@@ -6,6 +6,7 @@ from app.models.car_models import CarModels
 from app.models.car_variants import CarVariants
 from app.models.cars import Cars
 from app.models.enums.ListingEnums import ListingStatus
+from app.models.enums.OrderEnums import NotificationType
 from app.models.enums.TransactionEnums import TransactionStatus
 from app.models.enums.UserRoles import UserRoles
 from app.models.favorites import Favorites
@@ -17,6 +18,7 @@ from app.models.transactions import Transactions
 from app.models.users import User
 from app.services.car import marketplace_service
 from app.services.car.catalog_service import paginate
+from app.services.notifications import notification_service
 
 
 BUYER_ROLES = {UserRoles.BUYER, UserRoles.USER}
@@ -93,6 +95,16 @@ def create_inquiry(db: Session, listing_id: int, buyer: User, values: dict) -> I
         **values,
     )
     db.add(inquiry)
+    db.flush()
+    notification_service.create_notification(
+        db,
+        listing.seller_id,
+        NotificationType.INQUIRY,
+        "New buyer inquiry",
+        f"A buyer sent an inquiry for {listing.title}.",
+        inquiry.id,
+        "inquiry",
+    )
     db.commit()
     return get_buyer_inquiry(db, inquiry.id, buyer)
 
@@ -131,6 +143,16 @@ def send_inquiry_message(
     if user.id == inquiry.seller_id and inquiry.status == InquiryStatus.OPEN:
         inquiry.status = InquiryStatus.CONTACTED
     db.add(message)
+    recipient_id = inquiry.buyer_id if user.id == inquiry.seller_id else inquiry.seller_id
+    notification_service.create_notification(
+        db,
+        recipient_id,
+        NotificationType.INQUIRY,
+        "New inquiry message",
+        "You received a new message in an inquiry conversation.",
+        inquiry.id,
+        "inquiry",
+    )
     db.commit()
     return (
         db.query(InquiryMessages)

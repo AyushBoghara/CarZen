@@ -1,4 +1,4 @@
-# Car Selling, Reselling, Service and Resale Price Prediction System
+# Car Selling, Service and Resale Price Prediction System
 
 ## 1. Problem Definition
 

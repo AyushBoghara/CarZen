@@ -12,6 +12,7 @@ from app.models.inquiry_messages import InquiryMessages
 from app.models.listing_views import ListingViews
 from app.models.listings import Listings
 from app.models.notifications import Notifications
+from app.models.orders import Orders
 from app.models.ownership_history import OwnershipHistory
 from app.models.payments import Payments
 from app.models.prediction_features import PredictionFeatures

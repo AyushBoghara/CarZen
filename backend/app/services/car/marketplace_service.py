@@ -6,12 +6,14 @@ from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.enums.CarEnums import CarApprovalStatus
 from app.models.enums.ListingEnums import ListingSort, ListingStatus
+from app.models.enums.OrderEnums import NotificationType
 from app.models.cars import Cars
 from app.models.favorites import Favorites
 from app.models.listings import Listings
 from app.models.users import User
 from app.services.car import car_service
 from app.services.car.catalog_service import paginate
+from app.services.notifications import notification_service
 from app.schemas.cars_schema import CarDetailResponse
 from app.models.car_variants import CarVariants
 from app.models.car_models import CarModels
@@ -85,7 +87,18 @@ def get_listings(
 def update_listing(db: Session, car_id: int, user: User, values: dict) -> Listings:
     listing = get_owned_listing(db, car_id, user)
     if not values: raise ValueError("Provide at least one field to update.")
+    price_changed = "asking_price" in values and values["asking_price"] != listing.asking_price
     for field, value in values.items(): setattr(listing, field, value)
+    if price_changed:
+        notification_service.notify_favorite_users(
+            db,
+            listing.car_id,
+            NotificationType.FAVORITE,
+            "Favorite listing price changed",
+            f"The asking price for {listing.title} has changed.",
+            listing.id,
+            "listing",
+        )
     listing.updated_at = datetime.now(timezone.utc); db.commit(); db.refresh(listing); return listing
 
 
@@ -93,6 +106,15 @@ def delete_listing(db: Session, car_id: int, user: User) -> None:
     listing = get_owned_listing(db, car_id, user); 
     listing.deleted_at = datetime.now(timezone.utc); 
     listing.listing_status = ListingStatus.REMOVED; 
+    notification_service.notify_favorite_users(
+        db,
+        listing.car_id,
+        NotificationType.FAVORITE,
+        "Favorite listing is unavailable",
+        f"{listing.title} is no longer available.",
+        listing.id,
+        "listing",
+    )
     db.commit()
 
 
@@ -105,6 +127,15 @@ def publish_listing(db: Session, car_id: int, user: User, publish: bool) -> List
         listing.listing_status = ListingStatus.ACTIVE; listing.listed_at = datetime.now(timezone.utc); car.approval_status = CarApprovalStatus.PUBLISHED
     else:
         listing.listing_status = ListingStatus.DRAFT
+        notification_service.notify_favorite_users(
+            db,
+            listing.car_id,
+            NotificationType.FAVORITE,
+            "Favorite listing is unavailable",
+            f"{listing.title} is currently unavailable.",
+            listing.id,
+            "listing",
+        )
     db.commit()
     db.refresh(listing)
     return listing

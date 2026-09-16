@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+
+from app.api.v1.notification import notifications
 from . import models # Import modles to register them with SQLAlchemy
 from app.database.connection.conn import Base,engine
 
@@ -16,11 +18,13 @@ from app.api.v1.contact import contacts
 from app.api.v1.seller import seller_dashboard
 from app.api.v1.buyer import buyer
 from app.api.v1.seller import seller
+from app.api.v1.order import orders
 
 #create tables 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="TrueCar")
+app = FastAPI(title="CarZen")
+
 Path("uploads").mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
@@ -44,6 +48,8 @@ app.include_router(marketplace.router,prefix="/v1")
 app.include_router(seller_dashboard.router,prefix="/v1")
 app.include_router(buyer.router,prefix="/v1")
 app.include_router(seller.router,prefix="/v1")
+app.include_router(orders.router,prefix="/v1")
+app.include_router(notifications.router,prefix="/v1")
 
 # address router 
 app.include_router(addresses.router,prefix="/v1",tags=["address"])
