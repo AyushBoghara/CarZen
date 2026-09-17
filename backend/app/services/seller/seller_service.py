@@ -9,8 +9,8 @@ from app.services.car.catalog_service import paginate
 from app.services.notifications import notification_service
 
 
-SELLER_ROLES = {UserRoles.SELLER, UserRoles.RESELLER}
-
+# SELLER_ROLES = {UserRoles.SELLER, UserRoles.RESELLER}
+SELLER_ROLES = {UserRoles.SELLER}
 
 def ensure_seller(user: User) -> None:
     if user.role not in SELLER_ROLES:

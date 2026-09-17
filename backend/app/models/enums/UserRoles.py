@@ -1,10 +1,9 @@
 from enum import Enum
 
-
 class UserRoles(str, Enum):
-    BUYER = "buyer"
     SELLER = "seller"
-    RESELLER = "reseller"
+    # RESELLER = "reseller"
     SERVICE_PROVIDER = "service_provider"
-    USER = "user"
+    USER = "user"  # Buyer
     ADMIN = "admin"
+

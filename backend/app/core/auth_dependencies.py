@@ -60,3 +60,26 @@ def get_current_admin(
         )
 
     return current_user
+
+def get_current_seller(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if current_user.role not in {UserRoles.SELLER, UserRoles.RESELLER}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seller or reseller access required.",
+        )
+
+    return current_user
+
+
+def get_current_service_provider(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if current_user.role != UserRoles.SERVICE_PROVIDER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Service Provider access required.",
+        )
+
+    return current_user

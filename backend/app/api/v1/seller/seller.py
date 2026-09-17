@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.auth_dependencies import get_current_user
+from app.core.auth_dependencies import get_current_seller
 from app.database.connection.conn import get_db
 from app.models.inquiries import InquiryStatus
 from app.models.users import User
@@ -27,7 +27,7 @@ def list_inquiries(
     limit: int = Query(20, ge=1, le=100),
     inquiry_status: InquiryStatus | None = Query(None, alias="status"),
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_seller),
 ):
     try:
         data, pagination = seller_service.list_seller_inquiries(
@@ -39,7 +39,7 @@ def list_inquiries(
 
 
 @router.get("/seller/inquiries/{inquiry_id}", response_model=SellerInquiryDetailResponse, tags=["Seller Inquiries"])
-def get_inquiry(inquiry_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def get_inquiry(inquiry_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_seller)):
     try:
         return seller_service.get_seller_inquiry(db, inquiry_id, user)
     except Exception as exc:
@@ -47,7 +47,7 @@ def get_inquiry(inquiry_id: int, db: Session = Depends(get_db), user: User = Dep
 
 
 @router.patch("/seller/inquiries/{inquiry_id}/status", response_model=SellerInquiryDetailResponse, tags=["Seller Inquiries"])
-def update_status(inquiry_id: int, payload: SellerInquiryStatusUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def update_status(inquiry_id: int, payload: SellerInquiryStatusUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_seller)):
     try:
         return seller_service.update_inquiry_status(db, inquiry_id, user, payload.status)
     except Exception as exc:
@@ -55,7 +55,7 @@ def update_status(inquiry_id: int, payload: SellerInquiryStatusUpdate, db: Sessi
 
 
 @router.post("/seller/inquiries/{inquiry_id}/messages", response_model=InquiryMessageResponse, status_code=status.HTTP_201_CREATED, tags=["Seller Inquiries"])
-def reply_to_buyer(inquiry_id: int, payload: InquiryMessageCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def reply_to_buyer(inquiry_id: int, payload: InquiryMessageCreate, db: Session = Depends(get_db), user: User = Depends(get_current_seller)):
     try:
         return seller_service.send_seller_message(db, inquiry_id, user, payload.model_dump())
     except Exception as exc:

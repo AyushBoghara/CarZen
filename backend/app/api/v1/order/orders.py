@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.auth_dependencies import get_current_admin, get_current_user
+from app.core.auth_dependencies import get_current_admin, get_current_seller, get_current_user
 from app.database.connection.conn import get_db
 from app.models.enums.OrderEnums import OrderStatus
 from app.models.users import User
@@ -59,7 +59,7 @@ def cancel_buyer_order(order_id: int, db: Session = Depends(get_db), user: User 
 
 
 @router.get("/seller/orders", response_model=PaginatedResponse[OrderResponse], tags=["Seller Orders"])
-def list_seller_orders(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=100), order_status: OrderStatus | None = Query(None, alias="status"), db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def list_seller_orders(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=100), order_status: OrderStatus | None = Query(None, alias="status"), db: Session = Depends(get_db), user: User = Depends(get_current_seller)):
     try:
         data, pagination = order_service.list_seller_orders(db, user, page, limit, order_status)
         return {"data": data, "pagination": pagination}
@@ -68,7 +68,7 @@ def list_seller_orders(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, 
 
 
 @router.patch("/seller/orders/{order_id}/accept", response_model=OrderResponse, tags=["Seller Orders"])
-def accept_order(order_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def accept_order(order_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_seller)):
     try:
         return order_service.accept_order(db, order_id, user)
     except Exception as exc:
@@ -76,7 +76,7 @@ def accept_order(order_id: int, db: Session = Depends(get_db), user: User = Depe
 
 
 @router.patch("/seller/orders/{order_id}/reject", response_model=OrderResponse, tags=["Seller Orders"])
-def reject_order(order_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def reject_order(order_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_seller)):
     try:
         return order_service.reject_order(db, order_id, user)
     except Exception as exc:
@@ -84,7 +84,7 @@ def reject_order(order_id: int, db: Session = Depends(get_db), user: User = Depe
 
 
 @router.patch("/seller/orders/{order_id}/status", response_model=OrderResponse, tags=["Seller Orders"])
-def update_seller_status(order_id: int, payload: OrderStatusUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def update_seller_status(order_id: int, payload: OrderStatusUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_seller)):
     try:
         return order_service.update_seller_order_status(db, order_id, user, payload.status)
     except Exception as exc:

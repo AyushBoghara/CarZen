@@ -16,8 +16,10 @@ from app.services.car.catalog_service import paginate
 from app.services.notifications import notification_service
 
 
-BUYER_ROLES = {UserRoles.BUYER, UserRoles.USER}
-SELLER_ROLES = {UserRoles.SELLER, UserRoles.RESELLER}
+BUYER_ROLES = {UserRoles.USER}
+# feature requried the Reseller ok 
+# SELLER_ROLES = {UserRoles.SELLER, UserRoles.RESELLER}
+SELLER_ROLES = {UserRoles.SELLER}
 ACTIVE_ORDER_STATUSES = {OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING}
 
 

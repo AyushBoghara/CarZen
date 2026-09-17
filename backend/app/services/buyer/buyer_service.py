@@ -21,7 +21,7 @@ from app.services.car.catalog_service import paginate
 from app.services.notifications import notification_service
 
 
-BUYER_ROLES = {UserRoles.BUYER, UserRoles.USER}
+BUYER_ROLES = {UserRoles.USER}
 
 
 def ensure_buyer(user: User) -> None:

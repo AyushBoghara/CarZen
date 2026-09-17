@@ -18,9 +18,8 @@ from app.services.notifications import notification_service
 
 def create_car(db: Session, owner: User, values: dict) -> Cars:
     values = _normalize_optional_identifiers(values)
-    
-    # _validate_creator_role(owner, values["condition"])  #user this fuunction for check the seller and reseller two different sellers
-    
+    ensure_seller_access(owner)
+    _validate_creator_role(owner, values["condition"])
     _validate_years(values, None)
     
     _validate_resale_details(owner, values)
@@ -59,6 +58,11 @@ def list_cars(db: Session, page: int, limit: int, owner_id: int | None = None, *
     return paginate(query.order_by(Cars.id.desc()), page, limit)
 
 
+def ensure_seller_access(user: User) -> None:
+    if user.role not in {UserRoles.SELLER, UserRoles.RESELLER}:
+        raise PermissionError("Seller or reseller access required to manage cars.")
+
+
 def get_car(db: Session, car_id: int) -> Cars:
     car = _detail_query(db).filter(Cars.id == car_id, Cars.deleted_at.is_(None)).first()
     if not car: 
@@ -78,6 +82,8 @@ def update_car(db: Session, car_id: int, user: User, values: dict, allow_admin: 
     values = _normalize_optional_identifiers(values)
     if not values: 
         raise ValueError("Provide at least one field to update.")
+    if not allow_admin:
+        _validate_creator_role(user, values.get("condition", car.condition))
     _validate_years(values, car)
     
     if "variant_id" in values: 
@@ -291,20 +297,16 @@ def _ensure_approvable(car: Cars) -> None:
         )
         
 def _validate_creator_role(owner: User, condition: CarCondition) -> None:
+    ensure_seller_access(owner)
     if owner.role == UserRoles.SELLER:
-        if condition != CarCondition.NEW:
-            raise PermissionError("Sellers can add only new cars. Set condition to 'new'.")
         return
-    if owner.role == UserRoles.RESELLER:
-        if condition != CarCondition.OLD:
-            raise PermissionError("Resellers can add only resale cars. Set condition to 'oldCar'.")
-        return
-    raise PermissionError("Only seller and reseller accounts can add cars.")
+    if owner.role == UserRoles.RESELLER and condition != CarCondition.OLD:
+        raise PermissionError("Resellers can add only resale cars. Set condition to 'oldCar'.")
 
 
 def _validate_resale_details(owner: User, values: dict) -> None:
-    # if owner.role != UserRoles.RESELLER:
-    #     return
+    if values.get("condition") != CarCondition.OLD:
+        return
     required = ["registration_number", "vin_number", "registration_year", "ownership_type"]
     missing = [field for field in required if values.get(field) is None]
     if missing:

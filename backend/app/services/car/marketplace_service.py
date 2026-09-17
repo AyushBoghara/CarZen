@@ -7,6 +7,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from app.models.enums.CarEnums import CarApprovalStatus
 from app.models.enums.ListingEnums import ListingSort, ListingStatus
 from app.models.enums.OrderEnums import NotificationType
+from app.models.enums.UserRoles import UserRoles
 from app.models.cars import Cars
 from app.models.favorites import Favorites
 from app.models.listings import Listings
@@ -20,6 +21,7 @@ from app.models.car_models import CarModels
 
 
 def create_listing(db: Session, car_id: int, user: User, values: dict) -> Listings:
+    _ensure_seller(user)
     car_service.get_owned_car(db, car_id, user)
     if db.query(Listings).filter(Listings.car_id == car_id, Listings.deleted_at.is_(None)).first():
         raise ValueError("An active listing already exists for this car.")
@@ -31,6 +33,7 @@ def create_listing(db: Session, car_id: int, user: User, values: dict) -> Listin
 
 
 def get_owned_listing(db: Session, car_id: int, user: User) -> Listings:
+    _ensure_seller(user)
     listing = _get_listing_for_car(db, car_id)
     if listing.seller_id != user.id: raise PermissionError("You do not own this listing.")
     return listing
@@ -202,3 +205,8 @@ def _get_listing_for_car(db: Session, car_id: int) -> Listings:
     if not listing: 
         raise LookupError("Listing not found.")
     return listing
+
+
+def _ensure_seller(user: User) -> None:
+    if user.role not in {UserRoles.SELLER, UserRoles.RESELLER}:
+        raise PermissionError("Seller or reseller access required to manage listings.")

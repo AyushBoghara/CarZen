@@ -3,7 +3,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.core.auth_dependencies import get_current_admin, get_current_user
+from app.core.auth_dependencies import get_current_admin, get_current_seller, get_current_user
 from app.database.connection.conn import get_db
 from app.models.enums.CarEnums import CarApprovalStatus, FuelType, MediaType, TransmissionType
 from app.models.enums.UserRoles import UserRoles
@@ -33,11 +33,12 @@ def _page_result(data, pagination):
     return {"data": data, "pagination": pagination}
 
 def _managed_car(db: Session, car_id: int, user: User):
-    return car_service.get_owned_car(db, car_id, user, allow_admin=user.role == UserRoles.ADMIN)
+    car_service.ensure_seller_access(user)
+    return car_service.get_owned_car(db, car_id, user)
 
 
-@router.post("/cars", response_model=CarResponse, status_code=201, summary="Seller adds a new car or reseller adds a resale car", tags=["Cars"])
-def create_car(payload: CarCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+@router.post("/cars", response_model=CarResponse, status_code=201, summary="Seller adds new or used cars; reseller adds resale cars", tags=["Cars"])
+def create_car(payload: CarCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     try: 
         return car_service.create_car(db, current_user, payload.model_dump())
     except Exception as exc: 
@@ -45,7 +46,7 @@ def create_car(payload: CarCreate, db: Session = Depends(get_db), current_user: 
 
 
 @router.get("/cars", response_model=PaginatedResponse[CarResponse], summary="List the current user's cars", tags=["Cars"])
-def list_my_cars(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=100), search: str | None = None, verification_status: bool | None = None, approval_status: CarApprovalStatus | None = Query(None, alias="status"), brand_id: int | None = None, model_id: int | None = None, variant_id: int | None = None, fuel_type: FuelType | None = None, transmission: TransmissionType | None = None, city: str | None = None, state: str | None = None, min_price: Decimal | None = Query(None, ge=0), max_price: Decimal | None = Query(None, ge=0), min_year: int | None = Query(None, ge=1886), max_year: int | None = Query(None, ge=1886), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def list_my_cars(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=100), search: str | None = None, verification_status: bool | None = None, approval_status: CarApprovalStatus | None = Query(None, alias="status"), brand_id: int | None = None, model_id: int | None = None, variant_id: int | None = None, fuel_type: FuelType | None = None, transmission: TransmissionType | None = None, city: str | None = None, state: str | None = None, min_price: Decimal | None = Query(None, ge=0), max_price: Decimal | None = Query(None, ge=0), min_year: int | None = Query(None, ge=1886), max_year: int | None = Query(None, ge=1886), db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     data, pagination = car_service.list_cars(db, page, limit, owner_id=current_user.id, search=search, verification_status=verification_status, approval_status=approval_status, brand_id=brand_id, model_id=model_id, variant_id=variant_id, fuel_type=fuel_type, transmission=transmission, city=city, state=state, min_price=min_price, max_price=max_price, min_year=min_year, max_year=max_year)
     return _page_result(data, pagination)
 
@@ -61,7 +62,7 @@ def get_car(car_id: int, db: Session = Depends(get_db), current_user: User = Dep
 @router.patch("/cars/{car_id}", response_model=CarResponse, summary="Partially update an owned car", tags=["Cars"])
 def update_car(car_id: int, payload: CarUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     try: 
-        return car_service.update_car(db, car_id, current_user, payload.model_dump(exclude_unset=True), allow_admin=current_user.role == UserRoles.ADMIN)
+        return car_service.update_car(db, car_id, current_user, payload.model_dump(exclude_unset=True))
     except Exception as exc: 
         _raise(exc)
 
@@ -69,7 +70,7 @@ def update_car(car_id: int, payload: CarUpdate, db: Session = Depends(get_db), c
 @router.delete("/cars/{car_id}", response_model=MessageResponse, summary="Soft-delete an owned car", tags=["Cars"])
 def delete_car(car_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     try: 
-        car_service.soft_delete_car(db, car_id, current_user, allow_admin=current_user.role == UserRoles.ADMIN); return {"message": "Car deleted successfully."}
+        car_service.soft_delete_car(db, car_id, current_user); return {"message": "Car deleted successfully."}
     except Exception as exc:
         _raise(exc)
 
