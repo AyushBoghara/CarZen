@@ -11,13 +11,13 @@ from app.models.enums.OrderEnums import NotificationType, OrderStatus
 from app.models.enums.UserRoles import UserRoles
 from app.models.listings import Listings
 from app.models.orders import Orders
+from app.models.enums.TransactionEnums import PaymentStatus
 from app.models.users import User
 from app.services.car.catalog_service import paginate
 from app.services.notifications import notification_service
 
 
 BUYER_ROLES = {UserRoles.USER}
-# feature requried the Reseller ok 
 # SELLER_ROLES = {UserRoles.SELLER, UserRoles.RESELLER}
 SELLER_ROLES = {UserRoles.SELLER}
 ACTIVE_ORDER_STATUSES = {OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING}
@@ -216,6 +216,8 @@ def _change_status(db: Session, order: Orders, target: OrderStatus) -> None:
     if target == OrderStatus.CANCELLED:
         _cancel_order(db, order)
         return
+    if target == OrderStatus.COMPLETED and order.payment_status != PaymentStatus.PAID:
+        raise ValueError("An order can be completed only after payment is confirmed.")
     order.status = target
     if target == OrderStatus.COMPLETED:
         order.completed_at = datetime.now(timezone.utc)

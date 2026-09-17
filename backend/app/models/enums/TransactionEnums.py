@@ -23,3 +23,14 @@ class TransactionStatus(str, Enum):
     COMPLETED = "completed"
     CANCELLED = "cancelled"
     FAILED = "failed"
+
+
+class GatewayPaymentStatus(str, Enum):
+    """Lifecycle states for an individual gateway payment attempt."""
+
+    PENDING = "pending"
+    PROCESSING = "processing"
+    SUCCESS = "success"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    REFUNDED = "refunded"

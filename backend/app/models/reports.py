@@ -6,11 +6,13 @@ from sqlalchemy import (
     BigInteger,
     DateTime,
     Text,
+    Enum,
     ForeignKey
 )
 from sqlalchemy.orm import relationship
 
 from app.database.connection import Base
+from app.models.enums.ReportEnums import ReportReason, ReportStatus
 
 class Reports(Base):
     __tablename__ = "reports"
@@ -41,7 +43,10 @@ class Reports(Base):
     )
 
     reason = Column(
-        String(255),
+        Enum(
+            ReportReason,
+            values_callable=lambda enum_type: [member.value for member in enum_type],
+        ),
         nullable=False
     )
 
@@ -51,8 +56,12 @@ class Reports(Base):
     )
 
     status = Column(
-        String(50),
-        default="pending"
+        Enum(
+            ReportStatus,
+            values_callable=lambda enum_type: [member.value for member in enum_type],
+        ),
+        nullable=False,
+        default=ReportStatus.PENDING
     )
 
     created_at = Column(
@@ -64,10 +73,15 @@ class Reports(Base):
         DateTime,
         nullable=True
     )
+
+    resolved_by_id = Column(BigInteger, ForeignKey("users.id"), nullable=True)
+
+    admin_note = Column(Text, nullable=True)
     
     
     # Relationships
     reporter = relationship("User", back_populates="reports", foreign_keys=[reporter_id])
+    resolved_by = relationship("User", foreign_keys=[resolved_by_id])
     listing = relationship("Listings", back_populates="reports", foreign_keys=[listing_id])
     car = relationship("Cars", back_populates="reports", foreign_keys=[car_id])
  

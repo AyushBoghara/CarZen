@@ -11,6 +11,7 @@ python-jose==3.5.0
 
 pytest-httpx==0.36.2
 httpx==0.28.1
+alembic==1.16.5
 
 passlib[bcrypt]==1.7.4
 bcrypt==4.3.0

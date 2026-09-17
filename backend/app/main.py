@@ -4,6 +4,8 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 from app.api.v1.notification import notifications
+from app.api.v1.payment import payments
+from app.api.v1.report import reports
 from . import models # Import modles to register them with SQLAlchemy
 from app.database.connection.conn import Base,engine
 
@@ -50,6 +52,8 @@ app.include_router(buyer.router,prefix="/v1")
 app.include_router(seller.router,prefix="/v1")
 app.include_router(orders.router,prefix="/v1")
 app.include_router(notifications.router,prefix="/v1")
+app.include_router(payments.router,prefix="/v1")
+app.include_router(reports.router,prefix="/v1")
 
 # address router 
 app.include_router(addresses.router,prefix="/v1",tags=["address"])

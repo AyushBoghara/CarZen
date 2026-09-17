@@ -33,3 +33,4 @@ class Orders(Base):
     car = relationship("Cars", back_populates="orders", foreign_keys=[car_id])
     buyer = relationship("User", back_populates="orders_bought", foreign_keys=[buyer_id])
     seller = relationship("User", back_populates="orders_sold", foreign_keys=[seller_id])
+    payments = relationship("Payments", back_populates="order", foreign_keys="Payments.order_id")

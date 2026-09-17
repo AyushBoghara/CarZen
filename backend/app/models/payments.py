@@ -16,7 +16,7 @@ from app.database.connection import Base
 
 from app.models.enums.TransactionEnums import (
     PaymentMethod,
-    PaymentStatus
+    GatewayPaymentStatus,
 )
 
 
@@ -33,7 +33,21 @@ class Payments(Base):
     transaction_id = Column(
         BigInteger,
         ForeignKey("transactions.id"),
-        nullable=False
+        nullable=True
+    )
+
+    order_id = Column(
+        BigInteger,
+        ForeignKey("orders.id"),
+        nullable=True,
+        index=True,
+    )
+
+    user_id = Column(
+        BigInteger,
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
     )
 
     amount = Column(
@@ -62,9 +76,17 @@ class Payments(Base):
     )
 
     status = Column(
-        Enum(PaymentStatus),
-        default=PaymentStatus.PENDING
+        Enum(
+            GatewayPaymentStatus,
+            values_callable=lambda enum_type: [member.value for member in enum_type],
+        ),
+        nullable=False,
+        default=GatewayPaymentStatus.PENDING,
     )
+
+    razorpay_order_id = Column(String(255), unique=True, nullable=True, index=True)
+    razorpay_payment_id = Column(String(255), unique=True, nullable=True, index=True)
+    razorpay_signature = Column(String(512), nullable=True)
 
     payment_date = Column(
         DateTime,
@@ -91,3 +113,5 @@ class Payments(Base):
     
     # Relationships
     transaction = relationship("Transactions", back_populates="payments", foreign_keys=[transaction_id])
+    order = relationship("Orders", back_populates="payments", foreign_keys=[order_id])
+    user = relationship("User", back_populates="payments", foreign_keys=[user_id])

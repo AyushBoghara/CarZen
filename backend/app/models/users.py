@@ -29,7 +29,6 @@ class User(Base):
     addresses = relationship("Address",back_populates="user",foreign_keys="Address.user_id")
     cars_owned = relationship("Cars", back_populates="owner", foreign_keys="Cars.owner_id")
     listings = relationship("Listings", back_populates="seller", foreign_keys="Listings.seller_id")
-    ownership_history = relationship("OwnershipHistory", back_populates="owner", foreign_keys="OwnershipHistory.owner_id")
     contact = relationship( "Contact",back_populates="user",foreign_keys="Contact.user_id",uselist=False)
         
     service_centers = relationship("ServiceCenters", back_populates="owner", foreign_keys="ServiceCenters.owner_id")
@@ -46,6 +45,7 @@ class User(Base):
     transactions_sold = relationship("Transactions", back_populates="seller", foreign_keys="Transactions.seller_id")
     orders_bought = relationship("Orders", back_populates="buyer", foreign_keys="Orders.buyer_id")
     orders_sold = relationship("Orders", back_populates="seller", foreign_keys="Orders.seller_id")
+    payments = relationship("Payments", back_populates="user", foreign_keys="Payments.user_id")
 
     price_predictions = relationship("PricePredictions", back_populates="user", foreign_keys="PricePredictions.user_id")
     reviews = relationship("Reviews", back_populates="user", foreign_keys="Reviews.user_id")

@@ -6,4 +6,3 @@ class UserRoles(str, Enum):
     SERVICE_PROVIDER = "service_provider"
     USER = "user"  # Buyer
     ADMIN = "admin"
-

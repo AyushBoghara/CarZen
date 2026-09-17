@@ -213,7 +213,6 @@ class Cars(Base):
     media = relationship("CarMedia", back_populates="car", foreign_keys="CarMedia.car_id")
     features = relationship("CarFeatures", back_populates="car", foreign_keys="CarFeatures.car_id")
     listings = relationship("Listings", back_populates="car", foreign_keys="Listings.car_id")
-    ownership_history = relationship("OwnershipHistory", back_populates="car", foreign_keys="OwnershipHistory.car_id")
     service_records = relationship("ServiceRecords", back_populates="car", foreign_keys="ServiceRecords.car_id")
     favorites = relationship("Favorites", back_populates="car", foreign_keys="Favorites.car_id")
     orders = relationship("Orders", back_populates="car", foreign_keys="Orders.car_id")
