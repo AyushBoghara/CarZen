@@ -14,11 +14,18 @@ from app.models.orders import Orders
 from app.models.payments import Payments
 from app.models.users import User
 from app.services.notifications import notification_service
+from pathlib import Path
+from dotenv import load_dotenv
 
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 PAYABLE_ORDER_STATUSES = {OrderStatus.CONFIRMED, OrderStatus.PROCESSING}
 RAZORPAY_ORDER_URL = "https://api.razorpay.com/v1/orders"
+DEFAULT_RAZORPAY_MAX_ORDER_AMOUNT_PAISE = 5_000_000
 
+
+class PaymentAmountLimitError(ValueError):
+    """The order is above the transaction limit enabled for this account."""
 
 def create_payment(db: Session, order_id: int, payment_method, buyer: User) -> Payments:
     order = _get_payable_order(db, order_id, buyer)
@@ -32,6 +39,7 @@ def create_payment(db: Session, order_id: int, payment_method, buyer: User) -> P
 
     key_id, key_secret = _razorpay_credentials()
     amount_in_paise = _to_paise(order.amount)
+    _validate_razorpay_order_amount(amount_in_paise)
     gateway_order = _create_razorpay_order(key_id, key_secret, amount_in_paise, order.id)
     payment = Payments(
         order_id=order.id,
@@ -177,6 +185,7 @@ def _mark_success(db: Session, payment: Payments, razorpay_payment_id: str | Non
     )
     
 def _razorpay_credentials() -> tuple[str, str]:
+    load_dotenv(BASE_DIR / ".env")
     key_id = os.getenv("RAZORPAY_KEY_ID")
     key_secret = os.getenv("RAZORPAY_KEY_SECRET")
     
@@ -186,25 +195,78 @@ def _razorpay_credentials() -> tuple[str, str]:
     return key_id, key_secret
 
 
-def _create_razorpay_order(key_id: str, key_secret: str, amount: int, order_id: int) -> dict:
+def _create_razorpay_order(
+    key_id: str,
+    key_secret: str,
+    amount: int,
+    order_id: int,
+) -> dict:
+
+    payload = {
+        "amount": amount,
+        "currency": "INR",
+        "receipt": f"carzen-order-{order_id}",
+    }
+
+    print("========== RAZORPAY REQUEST ==========")
+    print("KEY ID:", key_id)
+    print("SECRET EXISTS:", bool(key_secret))
+    print("AMOUNT:", amount)
+    print("PAYLOAD:", payload)
+    print("URL:", RAZORPAY_ORDER_URL)
+    print("=======================================")
+
     try:
-        
         response = httpx.post(
             RAZORPAY_ORDER_URL,
             auth=(key_id, key_secret),
-            json={"amount": amount, "currency": "INR", "receipt": f"carzen-order-{order_id}"},
+            json=payload,
+            headers={
+                "Content-Type": "application/json",
+            },
             timeout=15.0,
         )
-        
-        response.raise_for_status()
-        data = response.json()
-        
-    except httpx.HTTPError as exc:
-        raise RuntimeError("Unable to create the Razorpay payment order.") from exc
-    if not data.get("id"):
-        raise RuntimeError("Razorpay did not return an order id.")
-    return data
 
+    except httpx.RequestError as exc:
+        print("RAZORPAY CONNECTION ERROR:", repr(exc))
+        raise RuntimeError(
+            f"Could not connect to Razorpay: {exc}"
+        ) from exc
+
+    print("========== RAZORPAY RESPONSE ==========")
+    print("STATUS:", response.status_code)
+    print("BODY:", response.text)
+    print("========================================")
+
+    if response.status_code >= 400:
+        try:
+            error = response.json().get("error", {})
+        except ValueError:
+            error = {}
+        if error.get("description") == "Amount exceeds maximum amount allowed.":
+            raise PaymentAmountLimitError(
+                "Razorpay rejected this order because it exceeds the payment "
+                "limit enabled for the account. Request a higher account limit, "
+                "then update RAZORPAY_MAX_ORDER_AMOUNT_PAISE to that approved limit."
+            )
+        raise RuntimeError(
+            f"Razorpay API error {response.status_code}: "
+            f"{response.text}"
+        )
+
+    try:
+        data = response.json()
+    except ValueError as exc:
+        raise RuntimeError(
+            f"Razorpay returned invalid JSON: {response.text}"
+        ) from exc
+
+    if not data.get("id"):
+        raise RuntimeError(
+            f"Razorpay did not return order id: {data}"
+        )
+
+    return data
 
 def _verify_payment_signature(values: dict) -> None:
     _, secret = _razorpay_credentials()
@@ -232,3 +294,36 @@ def _verify_webhook_signature(payload: bytes, signature: str | None) -> None:
 
 def _to_paise(amount: Decimal) -> int:
     return int((Decimal(amount) * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+
+def _validate_razorpay_order_amount(amount_in_paise: int) -> None:
+    """Reject values above the account's enabled Razorpay order limit.
+
+    Razorpay limits vary by account and environment.  The default reflects the
+    usual unraised test-account limit; production must set the environment
+    variable to the limit approved for its Razorpay account.
+    """
+    configured_limit = os.getenv(
+        "RAZORPAY_MAX_ORDER_AMOUNT_PAISE",
+        str(DEFAULT_RAZORPAY_MAX_ORDER_AMOUNT_PAISE),
+    )
+    try:
+        max_amount_in_paise = int(configured_limit)
+    except ValueError as exc:
+        raise RuntimeError(
+            "RAZORPAY_MAX_ORDER_AMOUNT_PAISE must be a whole number of paise."
+        ) from exc
+
+    if max_amount_in_paise < 100:
+        raise RuntimeError(
+            "RAZORPAY_MAX_ORDER_AMOUNT_PAISE must be at least 100 paise."
+        )
+    if amount_in_paise > max_amount_in_paise:
+        order_amount = Decimal(amount_in_paise) / 100
+        limit_amount = Decimal(max_amount_in_paise) / 100
+        raise PaymentAmountLimitError(
+            f"Order amount ₹{order_amount:,.2f} exceeds the configured Razorpay "
+            f"per-payment limit of ₹{limit_amount:,.2f}. Increase the account "
+            "limit in Razorpay, then set RAZORPAY_MAX_ORDER_AMOUNT_PAISE to the "
+            "approved limit."
+        )

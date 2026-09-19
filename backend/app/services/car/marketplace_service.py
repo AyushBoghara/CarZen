@@ -208,5 +208,5 @@ def _get_listing_for_car(db: Session, car_id: int) -> Listings:
 
 
 def _ensure_seller(user: User) -> None:
-    if user.role not in {UserRoles.SELLER, UserRoles.RESELLER}:
-        raise PermissionError("Seller or reseller access required to manage listings.")
+    if user.role != UserRoles.SELLER:
+        raise PermissionError("Seller access required to manage listings.")

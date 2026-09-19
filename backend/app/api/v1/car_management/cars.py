@@ -3,7 +3,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.core.auth_dependencies import get_current_admin, get_current_seller, get_current_user
+from app.core.auth_dependencies import get_current_admin, get_current_seller
 from app.database.connection.conn import get_db
 from app.models.enums.CarEnums import CarApprovalStatus, FuelType, MediaType, TransmissionType
 from app.models.enums.UserRoles import UserRoles
@@ -37,7 +37,7 @@ def _managed_car(db: Session, car_id: int, user: User):
     return car_service.get_owned_car(db, car_id, user)
 
 
-@router.post("/cars", response_model=CarResponse, status_code=201, summary="Seller adds new or used cars; reseller adds resale cars", tags=["Cars"])
+@router.post("/cars", response_model=CarResponse, status_code=201, summary="Seller adds new or used cars", tags=["Cars"])
 def create_car(payload: CarCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     try: 
         return car_service.create_car(db, current_user, payload.model_dump())
@@ -52,7 +52,7 @@ def list_my_cars(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=100
 
 
 @router.get("/cars/{car_id}", response_model=CarDetailResponse, summary="Get one owned car with details", tags=["Cars"])
-def get_car(car_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_car(car_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     try:
         return car_service.detail_payload(_managed_car(db, car_id, current_user))
     except Exception as exc: 
@@ -60,7 +60,7 @@ def get_car(car_id: int, db: Session = Depends(get_db), current_user: User = Dep
 
 
 @router.patch("/cars/{car_id}", response_model=CarResponse, summary="Partially update an owned car", tags=["Cars"])
-def update_car(car_id: int, payload: CarUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def update_car(car_id: int, payload: CarUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     try: 
         return car_service.update_car(db, car_id, current_user, payload.model_dump(exclude_unset=True))
     except Exception as exc: 
@@ -68,7 +68,7 @@ def update_car(car_id: int, payload: CarUpdate, db: Session = Depends(get_db), c
 
 
 @router.delete("/cars/{car_id}", response_model=MessageResponse, summary="Soft-delete an owned car", tags=["Cars"])
-def delete_car(car_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_car(car_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     try: 
         car_service.soft_delete_car(db, car_id, current_user); return {"message": "Car deleted successfully."}
     except Exception as exc:
@@ -76,12 +76,12 @@ def delete_car(car_id: int, db: Session = Depends(get_db), current_user: User = 
 
 
 @router.get("/cars/{car_id}/media", response_model=list[CarMediaResponse], tags=["Car Media"])
-def list_media(car_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def list_media(car_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     try: _managed_car(db, car_id, current_user); return media_service.list_media(db, car_id)
     except Exception as exc: _raise(exc)
 
 @router.post("/cars/{car_id}/media", response_model=CarMediaResponse, status_code=201, tags=["Car Media"])
-async def upload_media(car_id: int, file: UploadFile = File(...), media_type: MediaType = Form(...), sort_order: int = Form(0), is_primary: bool = Form(False), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def upload_media(car_id: int, file: UploadFile = File(...), media_type: MediaType = Form(...), sort_order: int = Form(0), is_primary: bool = Form(False), db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     try:
         _managed_car(db, car_id, current_user)
         return media_service.create_media(db, car_id, media_type, file.filename or "", await file.read(), sort_order, is_primary)
@@ -91,7 +91,7 @@ async def upload_media(car_id: int, file: UploadFile = File(...), media_type: Me
         await file.close()
 
 @router.patch("/cars/{car_id}/media/reorder", response_model=list[CarMediaResponse], tags=["Car Media"])
-def reorder_media(car_id: int, payload: CarMediaReorderRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def reorder_media(car_id: int, payload: CarMediaReorderRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     try:
         _managed_car(db, car_id, current_user)
         return media_service.reorder_media(db, car_id, [item.model_dump() for item in payload.media])
@@ -99,7 +99,7 @@ def reorder_media(car_id: int, payload: CarMediaReorderRequest, db: Session = De
         _raise(exc)
 
 @router.patch("/cars/{car_id}/media/{media_id}", response_model=CarMediaResponse, tags=["Car Media"])
-def update_media(car_id: int, media_id: int, payload: CarMediaUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def update_media(car_id: int, media_id: int, payload: CarMediaUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     try: 
         _managed_car(db, car_id, current_user)
         return media_service.update_media(db, car_id, media_id, payload.model_dump(exclude_unset=True))
@@ -107,7 +107,7 @@ def update_media(car_id: int, media_id: int, payload: CarMediaUpdate, db: Sessio
         _raise(exc)
 
 @router.delete("/cars/{car_id}/media/{media_id}", response_model=MessageResponse, tags=["Car Media"])
-def delete_media(car_id: int, media_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_media(car_id: int, media_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     try:
         
         _managed_car(db, car_id, current_user); 
@@ -120,7 +120,7 @@ def delete_media(car_id: int, media_id: int, db: Session = Depends(get_db), curr
         _raise(exc)
 
 @router.patch("/cars/{car_id}/media/{media_id}/primary", response_model=CarMediaResponse, tags=["Car Media"])
-def set_primary_media(car_id: int, media_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def set_primary_media(car_id: int, media_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     try:
         _managed_car(db, car_id, current_user) 
         return media_service.set_primary(db, car_id, media_id)
@@ -129,7 +129,7 @@ def set_primary_media(car_id: int, media_id: int, db: Session = Depends(get_db),
 
 
 @router.get("/cars/{car_id}/features", response_model=list[CarFeatureResponse], tags=["Car Features"])
-def list_features(car_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def list_features(car_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     try: 
         _managed_car(db, car_id, current_user)
         return feature_service.list_features(db, car_id)
@@ -137,14 +137,14 @@ def list_features(car_id: int, db: Session = Depends(get_db), current_user: User
         _raise(exc)
 
 @router.post("/cars/{car_id}/features", response_model=CarFeatureResponse, status_code=201, tags=["Car Features"])
-def create_feature(car_id: int, payload: CarFeatureCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_feature(car_id: int, payload: CarFeatureCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     try: 
         _managed_car(db, car_id, current_user); return feature_service.create_feature(db, car_id, payload.model_dump())
     except Exception as exc:
         _raise(exc)
 
 @router.patch("/cars/{car_id}/features/{feature_id}", response_model=CarFeatureResponse, tags=["Car Features"])
-def update_feature(car_id: int, feature_id: int, payload: CarFeatureUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def update_feature(car_id: int, feature_id: int, payload: CarFeatureUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     try: 
         _managed_car(db, car_id, current_user); 
         return feature_service.update_feature(db, car_id, feature_id, payload.model_dump(exclude_unset=True))
@@ -152,7 +152,7 @@ def update_feature(car_id: int, feature_id: int, payload: CarFeatureUpdate, db: 
         _raise(exc)
 
 @router.delete("/cars/{car_id}/features/{feature_id}", response_model=MessageResponse, tags=["Car Features"])
-def delete_feature(car_id: int, feature_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_feature(car_id: int, feature_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
     try: 
         _managed_car(db, car_id, current_user)
         feature_service.delete_feature(db, car_id, feature_id)

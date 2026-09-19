@@ -8,11 +8,17 @@ from app.database.connection.conn import get_db
 from app.models.users import User
 from app.schemas.payment_schema import PaymentCreate, PaymentResponse, PaymentStatusResponse, PaymentVerify
 from app.services.payments import payment_service
+from pathlib import Path
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+load_dotenv(BASE_DIR / ".env")
 
 router = APIRouter()
 
 def _raise(exc: Exception):
-    code = 404 if isinstance(exc, LookupError) else 403 if isinstance(exc, PermissionError) else 409 if isinstance(exc, ValueError) else 503 if isinstance(exc, RuntimeError) else 400
+    code = 404 if isinstance(exc, LookupError) else 403 if isinstance(exc, PermissionError) else 422 if isinstance(exc, payment_service.PaymentAmountLimitError) else 409 if isinstance(exc, ValueError) else 503 if isinstance(exc, RuntimeError) else 400
     raise HTTPException(code, str(exc)) from exc
 
 @router.post("/payments", response_model=PaymentStatusResponse, status_code=status.HTTP_201_CREATED, tags=["Payments"])
