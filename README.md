@@ -1,4 +1,4 @@
-# CarZen — Full-Stack Automotive Marketplace & Workshop Ecosystem
+# CarZen - Automotive Marketplace & Workshop Ecosystem
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.141.1-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?style=flat-square&logo=python)](https://www.python.org/)
