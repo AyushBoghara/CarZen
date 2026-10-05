@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CarZen - Razorpay Test Checkout</title>
+    <!-- Razorpay Official Checkout SDK -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        input, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
+        button { background: #0c6cf2; color: white; border: none; font-size: 16px; cursor: pointer; border-radius: 4px; }
+        pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h2>CarZen Payment Simulator</h2>
+    <label>Razorpay Key ID:</label>
+    <input id="key_id" placeholder="rzp_test_..." />
+
+    <label>Razorpay Order ID (from Step 2):</label>
+    <input id="order_id" placeholder="order_..." />
+
+    <label>Amount (in Rupees):</label>
+    <input id="amount" type="number" value="250000" />
+
+    <button onclick="payNow()">Open Razorpay UI</button>
+
+    <h3>Result from Razorpay:</h3>
+    <pre id="output">Fill values and click 'Open Razorpay UI'</pre>
+
+    <script>
+        function payNow() {
+            const key = document.getElementById("key_id").value;
+            const order_id = document.getElementById("order_id").value;
+            const amountInRupees = document.getElementById("amount").value;
+
+            const options = {
+                "key": key,
+                "amount": amountInRupees * 100, // paise
+                "currency": "INR",
+                "name": "CarZen",
+                "description": "Car Purchase Order",
+                "order_id": order_id,
+                "handler": function (response) {
+                    // This function runs when payment succeeds
+                    document.getElementById("output").textContent = JSON.stringify(response, null, 2);
+                    alert("Payment Successful! Signature received.");
+                },
+                "prefill": {
+                    "name": "John Buyer",
+                    "email": "buyer@carzen.com",
+                    "contact": "9999999999"
+                },
+                "theme": { "color": "#0c6cf2" }
+            };
+
+            const rzp = new Razorpay(options);
+            rzp.open();
+        }
+    </script>
+</body>
+</html>
