@@ -15,8 +15,6 @@ from sqlalchemy.orm import relationship
 
 from app.database.connection.conn import Base
 from app.models.enums.ServiceEnums import ServiceRequestStatus
-
-
 class ServiceRequests(Base):
     __tablename__ = "service_requests"
 
@@ -69,6 +67,31 @@ class ServiceRequests(Base):
     notes = Column(
         Text,
         nullable=True,
+    )
+
+    # Financial Breakdown
+    base_amount = Column(
+        Numeric(15, 2),
+        nullable=False,
+        default=0.00,
+    )
+
+    parts_cost = Column(
+        Numeric(15, 2),
+        nullable=False,
+        default=0.00,
+    )
+
+    labor_cost = Column(
+        Numeric(15, 2),
+        nullable=False,
+        default=0.00,
+    )
+
+    total_amount = Column(
+        Numeric(15, 2),
+        nullable=False,
+        default=0.00,
     )
 
     amount = Column(

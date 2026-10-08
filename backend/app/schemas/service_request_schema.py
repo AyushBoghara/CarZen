@@ -80,7 +80,8 @@ class ServiceRequestAdminComplete(BaseModel):
     labor_cost: Decimal | None = Field(default=None, ge=0, description="Labor cost")
     next_service_date: date | None = Field(default=None, description="Recommended next service date")
     next_service_mileage: Decimal | None = Field(default=None, ge=0, description="Recommended next service mileage")
-
+class ServiceRequestChooseCash(BaseModel):
+    notes: str | None = Field(default=None, max_length=500, description="Optional customer notes on cash payment at workshop")
 
 class ServiceRequestConfirmCash(BaseModel):
     notes: str | None = Field(default=None, max_length=500, description="Notes on cash payment collection")
@@ -104,6 +105,10 @@ class ServiceRequestResponse(BaseModel):
     scheduled_date: date
     scheduled_time: time
     notes: str | None = None
+    base_amount: Decimal | None = None
+    parts_cost: Decimal | None = None
+    labor_cost: Decimal | None = None
+    total_amount: Decimal | None = None
     amount: Decimal
     payment_status: str
     payment_method: str | None = None
@@ -119,21 +124,19 @@ class ServiceRequestResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-
-
 class ServiceCarCreate(BaseModel):
-    """
-    A simplified schema for adding a car for service purposes.
-    No expected_market_price, no ownership_type required.
-    The car is auto-approved — no admin review needed.
-    """
+    
     variant_id: int = Field(..., gt=0, description="Car variant ID from catalog")
     registration_number: str | None = Field(default=None, max_length=30, description="Number plate, e.g. MH02AB1234")
+    
     manufacturing_year: int = Field(..., ge=1886, le=2030, description="Year car was manufactured")
-    fuel_type: FuelType = Field(..., description="petrol / diesel / cng / electric / hybrid")
+    
+    fuel_type: FuelType = Field(..., description="petrol / diesel / cng / electric / hybrid ")
+    
     transmission: TransmissionType = Field(..., description="manual / automatic / amt / cvt / dct")
     mileage_km: Decimal = Field(..., ge=0, description="Current odometer reading in km")
     color: str | None = Field(default=None, max_length=50)
+    
     city: str = Field(..., min_length=1, max_length=100)
     state: str = Field(..., min_length=1, max_length=100)
     country: str = Field(default="India", max_length=100)

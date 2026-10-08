@@ -1,13 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from datetime import date as DateType
-from decimal import Decimal
 
 from app.core.auth_dependencies import get_current_admin, get_current_user
 from app.database.connection.conn import get_db
 from app.models.cars import Cars
 from app.models.car_variants import CarVariants
-from app.models.enums.CarEnums import CarApprovalStatus, CarCondition, FuelType, TransmissionType
+from app.models.enums.CarEnums import CarApprovalStatus, CarCondition
 from app.models.enums.ServiceEnums import ServiceRequestStatus
 from app.models.service_requests import ServiceRequests
 from app.models.users import User
@@ -22,10 +21,10 @@ from app.schemas.service_request_schema import (
     ServiceRequestReject,
     ServiceRequestResponse,
     ServiceRequestSchedule,
-    ServiceCarCreate
+    ServiceCarCreate,
+    ServiceRequestChooseCash,
 )
 from app.services.services import service_request_service
-from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -295,6 +294,31 @@ def verify_service_online(
 ):
     try:
         return service_request_service.verify_online_payment(db, request_id, user, payload.model_dump())
+    except Exception as exc:
+        db.rollback()
+        _raise(exc)
+
+# No Admin Permission Required
+@router.post(
+    "/service-requests/{request_id}/pay-cash",
+    response_model=ServiceRequestResponse,
+    tags=["Service Requests"],
+    summary="User chooses to pay cash at workshop counter",
+)
+def pay_cash_user(
+    request_id: int,
+    payload: ServiceRequestChooseCash = ServiceRequestChooseCash(),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """
+    Convenience endpoint for user to choose 'Pay with Cash at Service Center'.
+    Sets payment_method = 'cash'. Payment is settled at the counter when vehicle is picked up.
+    """
+    try:
+        return service_request_service.select_payment_method(
+            db, request_id, user, "cash", payload.notes
+        )
     except Exception as exc:
         db.rollback()
         _raise(exc)

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.cars import Cars
@@ -79,18 +80,23 @@ def create_service_request(db: Session, user: User, data: dict) -> ServiceReques
     if scheduled_dt < datetime.now():
         raise ValueError("Scheduled date and time cannot be in the past.")
 
-    # 5. Calculate server-side trusted total
-    total_amount = sum(s.price for s in services)
+    # 5. Calculate server-side trusted catalog total
+    catalog_total = sum(s.price for s in services)
 
+    # Validate address ONLY if provided by user
     address_id = data.get("address_id")
-
     if address_id is not None:
-        address = (db.query(Address).filter(Address.id == address_id,Address.user_id == user.id,Address.deleted_at.is_(None)).first())
-
-    if not address:
-        raise LookupError(
-            "Address not found or does not belong to the current user."
+        address = (
+            db.query(Address)
+            .filter(
+                Address.id == address_id,
+                Address.user_id == user.id,
+                Address.deleted_at.is_(None),
+            )
+            .first()
         )
+        if not address:
+            raise LookupError("Address not found or does not belong to the current user.")
 
     # 6. Create parent appointment request
     request = ServiceRequests(
@@ -101,7 +107,11 @@ def create_service_request(db: Session, user: User, data: dict) -> ServiceReques
         scheduled_date=scheduled_date,
         scheduled_time=scheduled_time,
         notes=data.get("notes"),
-        amount=total_amount,
+        amount=catalog_total,          # The single primary bill amount
+        base_amount=catalog_total,     # Transparent breakdown: Base service
+        parts_cost=Decimal("0.00"),     # Transparent breakdown: Parts (₹0 at booking)
+        labor_cost=Decimal("0.00"),     # Transparent breakdown: Labor (₹0 at booking)
+        total_amount=catalog_total,    # Helper alias matching amount
         payment_status=PaymentStatus.UNPAID,
         status=ServiceRequestStatus.REQUESTED,
     )
@@ -359,7 +369,24 @@ def admin_complete_request(
     request.status = ServiceRequestStatus.COMPLETED
     if data.get("admin_note"):
         request.admin_note = data["admin_note"]
+
+    # 1. Extract parts & labor logged by the technician
+    parts_cost = Decimal(str(data.get("parts_cost") or 0))
+    labor_cost = Decimal(str(data.get("labor_cost") or 0))
+    base_amount = request.base_amount if (request.base_amount is not None and request.base_amount > 0) else (request.amount or Decimal("0.00"))
+
+    # 2. Automatically update user-side payable bill
+    request.base_amount = base_amount
+    request.parts_cost = parts_cost
+    request.labor_cost = labor_cost
+    request.total_amount = base_amount + parts_cost + labor_cost
+    request.amount = request.total_amount
     request.updated_at = datetime.utcnow()
+
+    # 3. Update vehicle mileage if odometer reading was logged
+    odometer_reading = data.get("odometer_reading")
+    if odometer_reading is not None and request.car:
+        request.car.mileage_km = Decimal(str(odometer_reading))
 
     service_title = _get_service_name(request)
 
@@ -368,10 +395,10 @@ def admin_complete_request(
         car_id=request.car_id,
         service_type=service_title,
         service_date=request.scheduled_date,
-        odometer_reading=data.get("odometer_reading"),
-        service_cost=request.amount,
-        parts_cost=data.get("parts_cost"),
-        labor_cost=data.get("labor_cost"),
+        odometer_reading=odometer_reading,
+        service_cost=request.base_amount,
+        parts_cost=parts_cost,
+        labor_cost=labor_cost,
         description=data.get("admin_note") or request.notes,
         next_service_date=data.get("next_service_date"),
         next_service_mileage=data.get("next_service_mileage"),
@@ -453,7 +480,8 @@ def initiate_online_payment(db: Session, request_id: int, user: User) -> dict:
     if request.payment_status == "paid":
         raise ValueError("This service request has already been paid.")
 
-    amount = request.amount
+    # Charge the recalculated final bill (base + parts + labor)
+    amount = request.total_amount if (request.total_amount is not None and request.total_amount > 0) else request.amount
     key_id, key_secret = payment_service._razorpay_credentials()
     amount_in_paise = payment_service._to_paise(amount)
     payment_service._validate_razorpay_order_amount(amount_in_paise)
@@ -488,6 +516,38 @@ def initiate_online_payment(db: Session, request_id: int, user: User) -> dict:
         "razorpay_order_id": gateway_order["id"],
         "razorpay_key_id": key_id,
     }
+
+
+def select_payment_method(
+    db: Session,
+    request_id: int,
+    user: User,
+    payment_method: str,
+    notes: str | None = None,
+) -> ServiceRequests:
+    """
+    User chooses payment method ('online' or 'cash') directly.
+    No prior admin approval is required.
+    """
+    request = get_user_request(db, request_id, user)
+
+    if request.status in {ServiceRequestStatus.CANCELLED, ServiceRequestStatus.REJECTED}:
+        raise ValueError(f"Cannot select payment method for a {request.status.value.lower()} service request.")
+    if request.payment_status == "paid":
+        raise ValueError("This service request has already been paid.")
+
+    normalized = payment_method.strip().lower()
+    if normalized not in {"cash", "online"}:
+        raise ValueError("Invalid payment method. Allowed values are 'cash' or 'online'.")
+
+    request.payment_method = normalized
+    if notes:
+        request.notes = f"{request.notes or ''}\nPayment Note: {notes}".strip()
+    request.updated_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(request)
+    return request
 
 
 def verify_online_payment(db: Session, request_id: int, user: User, values: dict) -> ServiceRequests:
@@ -525,12 +585,14 @@ def verify_online_payment(db: Session, request_id: int, user: User, values: dict
     request.payment_method = "online"
     request.updated_at = datetime.utcnow()
 
+    final_amount = request.total_amount if (request.total_amount is not None and request.total_amount > 0) else request.amount
+    
     notification_service.create_notification(
         db,
         user.id,
         NotificationType.PAYMENT,
         "Service Payment Successful",
-        f"Online payment of INR {request.amount} for service request #{request.id} was verified.",
+        f"Online payment of INR {final_amount} for service request #{request.id} was verified.",
         payment.id,
         "service_payment",
     )
@@ -546,9 +608,14 @@ def confirm_cash_payment(
     admin: User,
     notes: str | None = None,
 ) -> ServiceRequests:
+    """
+    Workshop counter desk / admin settles cash payment collected physically upon car pickup.
+    """
     request = admin_get_request(db, request_id)
     if request.status in {ServiceRequestStatus.CANCELLED, ServiceRequestStatus.REJECTED}:
         raise ValueError(f"Cannot collect cash for a {request.status.value.lower()} service request.")
+
+    amount = request.total_amount if (request.total_amount is not None and request.total_amount > 0) else request.amount
 
     request.payment_status = "paid"
     request.payment_method = "cash"
@@ -557,7 +624,7 @@ def confirm_cash_payment(
     payment = Payments(
         service_request_id=request.id,
         user_id=request.user_id,
-        amount=request.amount,
+        amount=amount,
         currency="INR",
         payment_method=PaymentMethod.CASH,
         provider="cash",
@@ -566,7 +633,7 @@ def confirm_cash_payment(
         provider_metadata={
             "type": "cash_payment",
             "confirmed_by": admin.id,
-            "notes": notes or "Cash collected directly by CarZen",
+            "notes": notes or "Cash collected directly at CarZen service center",
         },
     )
     db.add(payment)
@@ -576,7 +643,7 @@ def confirm_cash_payment(
         request.user_id,
         NotificationType.PAYMENT,
         "Service Cash Payment Received",
-        f"Cash payment of INR {request.amount} for service request #{request.id} was confirmed by {admin.first_name}.",
+        f"Cash payment of INR {amount} for service request #{request.id} was confirmed by {admin.first_name}.",
         payment.id,
         "service_payment",
     )
