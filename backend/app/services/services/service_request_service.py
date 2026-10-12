@@ -430,7 +430,7 @@ def admin_complete_request(
         request.id,
         "service_request",
     )
-
+    
     db.commit()
     db.refresh(request)
     return request
