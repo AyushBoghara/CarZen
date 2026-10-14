@@ -5,6 +5,7 @@ import joblib
 from sqlalchemy.orm import Session
 from app.models.car_price_predict import CarPricePredict
 from app.models.users import User
+from app.services.car.catalog_service import paginate
 
 # Load saved files
 
@@ -111,3 +112,14 @@ def predict_car_price(db: Session,user:User, name,year,km_driven,fuel,seller_typ
         db.rollback()
         raise("Error : ",e)
 
+def get_predict_car_price(db: Session, page: int, limit: int, owner_id: int):
+    query = (
+        db.query(CarPricePredict)
+        .filter(CarPricePredict.user_id == owner_id)
+        .order_by(CarPricePredict.id.desc())
+    )
+    
+    if not query:
+        raise LookupError("Predicted Car Price not found.")
+    
+    return paginate(query, page, limit)

@@ -1,4 +1,7 @@
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from datetime import date as DateType
 
@@ -500,3 +503,17 @@ def admin_confirm_cash(
     except Exception as exc:
         db.rollback()
         _raise(exc)
+
+@router.get("/service-requests/{request_id}/invoice", tags=["Service Requests"])
+def download_invoice(request_id: int, db: Session = Depends(get_db),
+                     current_user: User = Depends(get_current_user)):
+    req = db.query(ServiceRequests).filter(ServiceRequests.id == request_id).first()
+    if not req:
+        raise HTTPException(404, "Service request not found.")
+    if req.user_id != current_user.id and current_user.role.value != "admin":
+        raise HTTPException(403, "Not allowed.")
+    if not req.invoice_pdf_path or not Path(req.invoice_pdf_path).exists():
+        raise HTTPException(404, "Invoice not available yet.")
+    
+    return FileResponse(req.invoice_pdf_path, media_type="application/pdf",
+                        filename=f"CarZen-Invoice-{req.id}.pdf")

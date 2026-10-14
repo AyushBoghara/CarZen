@@ -17,6 +17,7 @@ from app.services.car.catalog_service import paginate
 from app.services.notifications import notification_service
 from app.services.payments import payment_service
 from app.models.address import Address
+from app.services.services import invoice_pdf_service
 
 
 def _request_query(db: Session):
@@ -430,9 +431,17 @@ def admin_complete_request(
         request.id,
         "service_request",
     )
-
+    
     db.commit()
     db.refresh(request)
+    
+    try:
+        request.invoice_pdf_path = invoice_pdf_service.generate_service_invoice(request, record)
+        db.commit()
+        db.refresh(request)
+    except Exception:
+        db.rollback()
+
     return request
 
 

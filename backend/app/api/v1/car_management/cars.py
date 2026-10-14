@@ -77,7 +77,9 @@ def delete_car(car_id: int, db: Session = Depends(get_db), current_user: User = 
 
 @router.get("/cars/{car_id}/media", response_model=list[CarMediaResponse], tags=["Car Media"])
 def list_media(car_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_seller)):
-    try: _managed_car(db, car_id, current_user); return media_service.list_media(db, car_id)
+    try: 
+        _managed_car(db, car_id, current_user)
+        return media_service.list_media(db, car_id)
     except Exception as exc: _raise(exc)
 
 @router.post("/cars/{car_id}/media", response_model=CarMediaResponse, status_code=201, tags=["Car Media"])
@@ -246,3 +248,18 @@ def create_car_price_predict(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Car price prediction model files are missing.",
         ) from exc
+        
+@router.get("/car-price-predict", response_model=PaginatedResponse[CarPricePredictResponse], summary="List the current user's cars", tags=["Prediction"])
+def get_predicted_car_price(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        data, pagination = car_price_predict_service.get_predict_car_price(
+            db, page, limit, owner_id=current_user.id
+        )
+        return _page_result(data, pagination)
+    except Exception as exc:
+        _raise(exc)

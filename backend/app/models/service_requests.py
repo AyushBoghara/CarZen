@@ -132,7 +132,7 @@ class ServiceRequests(Base):
         nullable=True,
         index=True,
     )
-
+    invoice_pdf_path = Column(String(500), nullable=True)
     created_at = Column(
         DateTime,
         default=datetime.datetime.utcnow,

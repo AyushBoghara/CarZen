@@ -14,6 +14,7 @@ from app.models.enums.UserRoles import UserRoles
 from app.models.users import User
 from app.services.car.catalog_service import get_variant, paginate
 from app.services.notifications import notification_service
+from app.models.car_price_predict import CarPricePredict
 
 
 def create_car(db: Session, owner: User, values: dict) -> Cars:
@@ -301,3 +302,4 @@ def _validate_resale_details(owner: User, values: dict) -> None:
     missing = [field for field in required if values.get(field) is None]
     if missing:
         raise ValueError(f"Resale cars require: {', '.join(missing)}.")
+
