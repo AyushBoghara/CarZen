@@ -30,7 +30,7 @@
 17. [Vehicle Orders & Checkout (3 Endpoints)](#vehicle-orders--checkout)
 18. [Payments & Razorpay Integration (6 Endpoints)](#payments--razorpay-integration)
 19. [Financial Transactions Ledger (4 Endpoints)](#financial-transactions-ledger)
-20. [Service Center & Maintenance History (15 Endpoints)](#service-center--maintenance-history)
+20. [Service Center & Maintenance History (14 Endpoints)](#service-center--maintenance-history)
 21. [Reviews & Ratings (5 Endpoints)](#reviews--ratings)
 22. [Moderation Reports (3 Endpoints)](#moderation-reports)
 23. [Notifications System (5 Endpoints)](#notifications-system)
@@ -6711,7 +6711,7 @@ curl -X GET "http://localhost:8000/v1/transactions/{transaction_id}" \
 
 ## Service Center & Maintenance History
 
-*Total Endpoints: 15*
+*Total Endpoints: 14*
 
 
 ### GET `/v1/cars/{car_id}/service-history`
@@ -6829,10 +6829,6 @@ curl -X GET "http://localhost:8000/v1/cars/{car_id}/service-history?page=1&limit
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
-  "base_amount": "string",
-  "parts_cost": "string",
-  "labor_cost": "string",
-  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -6929,10 +6925,6 @@ curl -X POST "http://localhost:8000/v1/service-requests" \
       "scheduled_date": "2026-09-28",
       "scheduled_time": "string",
       "notes": {},
-      "base_amount": {},
-      "parts_cost": {},
-      "labor_cost": {},
-      "total_amount": {},
       "amount": "string",
       "payment_status": "string",
       "payment_method": {},
@@ -6993,10 +6985,6 @@ curl -X GET "http://localhost:8000/v1/service-requests?page=1&limit=20" \
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
-  "base_amount": "string",
-  "parts_cost": "string",
-  "labor_cost": "string",
-  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -7092,10 +7080,6 @@ curl -X GET "http://localhost:8000/v1/service-requests/{request_id}" \
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
-  "base_amount": "string",
-  "parts_cost": "string",
-  "labor_cost": "string",
-  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -7144,112 +7128,6 @@ curl -X GET "http://localhost:8000/v1/service-requests/{request_id}" \
 #### Example cURL Request
 ```bash
 curl -X POST "http://localhost:8000/v1/service-requests/{request_id}/cancel" \
-  -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" \
-  -H "Accept: application/json" \
-  -H "Content-Type: application/json" \
-  -d '{
-  "notes": "string"
-}'
-```
-
-
----
-
-### POST `/v1/service-requests/{request_id}/pay-cash`
-
-**Summary**: User chooses to pay cash at workshop counter  
-
-**Description**: Convenience endpoint for user to choose 'Pay with Cash at Service Center'.
-Sets payment_method = 'cash'. Payment is settled at the counter when vehicle is picked up.  
-
-**Authentication**: Authenticated User (`Bearer <token>`)  
-
-
-#### Path Parameters
-
-| Parameter | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `request_id` | `integer` | **Yes** | - |
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `notes` | `string` | No | Optional customer notes on cash payment at workshop |
-
-
-**Example Payload**:
-```json
-{
-  "notes": "string"
-}
-```
-
-
-#### Response (`200 Successful Response`)
-
-```json
-{
-  "id": 1,
-  "user_id": 1,
-  "car_id": 1,
-  "service_id": 1,
-  "address_id": 1,
-  "scheduled_date": "2026-09-28",
-  "scheduled_time": "string",
-  "notes": "string",
-  "base_amount": "string",
-  "parts_cost": "string",
-  "labor_cost": "string",
-  "total_amount": "string",
-  "amount": "string",
-  "payment_status": "string",
-  "payment_method": "string",
-  "status": "requested",
-  "admin_note": "string",
-  "service_record_id": 1,
-  "created_at": "2026-09-28T10:00:00Z",
-  "updated_at": "2026-09-28T10:00:00Z",
-  "user": {
-    "id": 1,
-    "first_name": "John",
-    "last_name": {},
-    "email": "user@carzen.com",
-    "phone_number": {}
-  },
-  "car": {
-    "id": 1,
-    "registration_number": {},
-    "manufacturing_year": 2023,
-    "color": {},
-    "fuel_type": {}
-  },
-  "service": {
-    "id": 1,
-    "name": "string",
-    "description": {},
-    "price": "string",
-    "duration_minutes": {},
-    "image_url": {},
-    "status": "string",
-    "created_at": "2026-09-28T10:00:00Z",
-    "updated_at": "2026-09-28T10:00:00Z"
-  },
-  "items": [
-    {
-      "id": 1,
-      "service_id": {},
-      "service_name": "string",
-      "unit_price": "string",
-      "duration_minutes": {}
-    }
-  ]
-}
-```
-
-#### Example cURL Request
-```bash
-curl -X POST "http://localhost:8000/v1/service-requests/{request_id}/pay-cash" \
   -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" \
   -H "Accept: application/json" \
   -H "Content-Type: application/json" \
@@ -7341,10 +7219,6 @@ curl -X POST "http://localhost:8000/v1/service-requests/{request_id}/pay-online"
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
-  "base_amount": "string",
-  "parts_cost": "string",
-  "labor_cost": "string",
-  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -10052,10 +9926,6 @@ curl -X PATCH "http://localhost:8000/v1/admin/reviews/{review_id}/visibility" \
       "scheduled_date": "2026-09-28",
       "scheduled_time": "string",
       "notes": {},
-      "base_amount": {},
-      "parts_cost": {},
-      "labor_cost": {},
-      "total_amount": {},
       "amount": "string",
       "payment_status": "string",
       "payment_method": {},
@@ -10116,10 +9986,6 @@ curl -X GET "http://localhost:8000/v1/admin/service-requests?page=1&limit=20" \
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
-  "base_amount": "string",
-  "parts_cost": "string",
-  "labor_cost": "string",
-  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -10200,10 +10066,6 @@ curl -X GET "http://localhost:8000/v1/admin/service-requests/{request_id}" \
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
-  "base_amount": "string",
-  "parts_cost": "string",
-  "labor_cost": "string",
-  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -10299,10 +10161,6 @@ curl -X POST "http://localhost:8000/v1/admin/service-requests/{request_id}/accep
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
-  "base_amount": "string",
-  "parts_cost": "string",
-  "labor_cost": "string",
-  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -10412,10 +10270,6 @@ curl -X POST "http://localhost:8000/v1/admin/service-requests/{request_id}/cance
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
-  "base_amount": "string",
-  "parts_cost": "string",
-  "labor_cost": "string",
-  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -10520,10 +10374,6 @@ curl -X POST "http://localhost:8000/v1/admin/service-requests/{request_id}/compl
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
-  "base_amount": "string",
-  "parts_cost": "string",
-  "labor_cost": "string",
-  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -10623,10 +10473,6 @@ curl -X POST "http://localhost:8000/v1/admin/service-requests/{request_id}/confi
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
-  "base_amount": "string",
-  "parts_cost": "string",
-  "labor_cost": "string",
-  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -10730,10 +10576,6 @@ curl -X POST "http://localhost:8000/v1/admin/service-requests/{request_id}/rejec
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
-  "base_amount": "string",
-  "parts_cost": "string",
-  "labor_cost": "string",
-  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -10820,10 +10662,6 @@ curl -X POST "http://localhost:8000/v1/admin/service-requests/{request_id}/sched
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
-  "base_amount": "string",
-  "parts_cost": "string",
-  "labor_cost": "string",
-  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",

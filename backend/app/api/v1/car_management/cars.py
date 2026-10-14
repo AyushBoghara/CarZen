@@ -3,13 +3,15 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.core.auth_dependencies import get_current_admin, get_current_seller
+from app.core.auth_dependencies import get_current_admin, get_current_seller, get_current_user
 from app.database.connection.conn import get_db
 from app.models.enums.CarEnums import CarApprovalStatus, FuelType, MediaType, TransmissionType
 from app.models.users import User
 from app.schemas.cars_schema import CarCreate, CarDetailResponse, CarFeatureCreate, CarFeatureResponse, CarFeatureUpdate, CarMediaReorderRequest, CarMediaResponse, CarMediaUpdate, CarRejectionRequest, CarResponse, CarUpdate, PaginatedResponse
 from app.schemas.users_schema import MessageResponse
 from app.services.car import car_service, feature_service, media_service
+from app.schemas.car_predict_model_schema import CarPricePredictCreate, CarPricePredictResponse
+from app.services.car import car_price_predict_service
 
 router = APIRouter()
 
@@ -202,3 +204,45 @@ def unverify_car(car_id: int,
         return car_service.detail_payload(car_service.set_verification(db, car_id, admin, False))
     except Exception as exc:
         _raise(exc)
+
+
+@router.post(
+    "/car-price-predict",
+    response_model=CarPricePredictResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Prediction"],
+)
+def create_car_price_predict(
+    payload: CarPricePredictCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    try:
+        car_data = car_price_predict_service.predict_car_price(
+            db=db,
+            user=user,
+            name=payload.name,
+            year=payload.year,
+            km_driven=payload.km_driven,
+            fuel=payload.fuel,
+            seller_type=payload.seller_type,
+            transmission=payload.transmission,
+            owner=payload.owner,
+            mileage=payload.mileage,
+            engine=payload.engine,
+            max_power=payload.max_power,
+            seats=payload.seats
+        )
+        return car_data
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Car price prediction model files are missing.",
+        ) from exc

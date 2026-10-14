@@ -49,3 +49,4 @@ class User(Base):
     reviews = relationship("Reviews", back_populates="user", foreign_keys="Reviews.user_id")
     service_requests = relationship("ServiceRequests", back_populates="user", foreign_keys="ServiceRequests.user_id")
 
+    car_price_predict = relationship("CarPricePredict",back_populates="user",foreign_keys="CarPricePredict.user_id",)
