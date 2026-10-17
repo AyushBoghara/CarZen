@@ -14,27 +14,29 @@
 1. [Overview & Architecture Standards](#overview--architecture-standards)
 2. [Authentication & Authorization Guide](#authentication--authorization-guide)
 3. [Car Management & User Workflow](#car-management--user-workflow)
-4. [HTTP Status Codes & Error Formats](#http-status-codes--error-formats)
-5. [System & Health (1 Endpoints)](#system--health)
-6. [Authentication & Authorization (4 Endpoints)](#authentication--authorization)
-7. [User Profile & Management (10 Endpoints)](#user-profile--management)
-8. [Address Management (5 Endpoints)](#address-management)
-9. [Contact Information (6 Endpoints)](#contact-information)
-10. [Vehicle Catalog (Brands, Models, Variants) (19 Endpoints)](#vehicle-catalog-brands-models-variants)
-11. [Seller Car Inventory & Assets (15 Endpoints)](#seller-car-inventory--assets)
-12. [Marketplace Listings & Public Catalog (8 Endpoints)](#marketplace-listings--public-catalog)
-13. [Favorites & Wishlist (3 Endpoints)](#favorites--wishlist)
-14. [Buyer Operations (11 Endpoints)](#buyer-operations)
-15. [Seller Operations (9 Endpoints)](#seller-operations)
-16. [Inquiry Messaging (2 Endpoints)](#inquiry-messaging)
-17. [Vehicle Orders & Checkout (3 Endpoints)](#vehicle-orders--checkout)
-18. [Payments & Razorpay Integration (6 Endpoints)](#payments--razorpay-integration)
-19. [Financial Transactions Ledger (4 Endpoints)](#financial-transactions-ledger)
-20. [Service Center & Maintenance History (14 Endpoints)](#service-center--maintenance-history)
-21. [Reviews & Ratings (5 Endpoints)](#reviews--ratings)
-22. [Moderation Reports (3 Endpoints)](#moderation-reports)
-23. [Notifications System (5 Endpoints)](#notifications-system)
-24. [Admin Operations & Management (39 Endpoints)](#admin-operations--management)
+4. [Workshop & Digital Service Lifecycle (PDF Invoicing & Email Dispatch)](#workshop--digital-service-lifecycle-pdf-invoicing--email-dispatch)
+5. [Payments, Razorpay & Financial Audit Ledger](#payments-razorpay--financial-audit-ledger)
+6. [HTTP Status Codes & Error Formats](#http-status-codes--error-formats)
+7. [System & Health (1 Endpoints)](#system--health)
+8. [Authentication & Authorization (4 Endpoints)](#authentication--authorization)
+9. [User Profile & Management (10 Endpoints)](#user-profile--management)
+10. [Address Management (5 Endpoints)](#address-management)
+11. [Contact Information (6 Endpoints)](#contact-information)
+12. [Vehicle Catalog (Brands, Models, Variants) (19 Endpoints)](#vehicle-catalog-brands-models-variants)
+13. [Seller Car Inventory & Assets (17 Endpoints)](#seller-car-inventory--assets)
+14. [Marketplace Listings & Public Catalog (8 Endpoints)](#marketplace-listings--public-catalog)
+15. [Favorites & Wishlist (3 Endpoints)](#favorites--wishlist)
+16. [Buyer Operations (11 Endpoints)](#buyer-operations)
+17. [Seller Operations (9 Endpoints)](#seller-operations)
+18. [Inquiry Messaging (2 Endpoints)](#inquiry-messaging)
+19. [Vehicle Orders & Checkout (3 Endpoints)](#vehicle-orders--checkout)
+20. [Payments & Razorpay Integration (6 Endpoints)](#payments--razorpay-integration)
+21. [Financial Transactions Ledger (4 Endpoints)](#financial-transactions-ledger)
+22. [Service Center & Maintenance History (16 Endpoints)](#service-center--maintenance-history)
+23. [Reviews & Ratings (5 Endpoints)](#reviews--ratings)
+24. [Moderation Reports (3 Endpoints)](#moderation-reports)
+25. [Notifications System (5 Endpoints)](#notifications-system)
+26. [Admin Operations & Management (39 Endpoints)](#admin-operations--management)
 
 ---
 
@@ -202,6 +204,105 @@ flowchart TD
 | **Payment Captured** | `PUBLISHED` | `True` | `RESERVED` | `PROCESSING` |
 | **Order Completed / Handed Over** | `SOLD` | `True` | `SOLD` | `COMPLETED` |
 | **Order Cancelled / Rejected** | `PUBLISHED` | `True` | `ACTIVE` *(restored)* | `CANCELLED` / `REJECTED` |
+
+## Workshop & Digital Service Lifecycle (PDF Invoicing & Email Dispatch)
+
+
+CarZen includes an enterprise vehicle service and workshop management module. It allows vehicle owners to select multiple maintenance packages, schedule appointments, and track jobs through completion, where an itemized PDF invoice is automatically generated and emailed to the customer.
+
+### Workshop Workflow Architecture
+
+```mermaid
+flowchart TD
+    subgraph Catalog_Setup["1. Service Catalog Management (Admin)"]
+        A["Admin creates Services (Oil Change, Brake Inspection, etc.)\nwith base price & estimated duration"]
+    end
+
+    subgraph Customer_Booking["2. Multi-Service Request (Customer)"]
+        B["User selects verified owned vehicle"]
+        C["User picks one or more services (service_ids)"]
+        D["User selects date, slot time & optional pickup address"]
+        B --> C --> D
+        D --> E["ServiceRequest created (Status: PENDING)\nBase total calculated server-side"]
+    end
+
+    subgraph Workshop_Execution["3. Workshop Queue & Servicing (Admin / Technician)"]
+        E --> F["Admin reviews & confirms slot (Status: SCHEDULED)"]
+        F --> G["Technician begins work (Status: IN_PROGRESS)"]
+        G --> H["Technician completes repairs:\n- Inputs parts cost & labor cost\n- Records final odometer reading\n- Adds technician notes & next service target"]
+    end
+
+    subgraph Invoicing_Dispatch["4. Completion, PDF Invoicing & Emailing (System)"]
+        H --> I["Status: COMPLETED\nVehicle mileage updated\nPermanent ServiceRecord & ServiceItems saved"]
+        I --> J["ReportLab compiles branded PDF Invoice\n(Saved to invoices/CZ-INV-XXXXXX.pdf)"]
+        J --> K["SMTP Dispatcher emails invoice PDF to customer email"]
+        K --> L["In-app & push notification delivered to user"]
+    end
+
+    subgraph Settlement["5. Billing & Payment (Customer & Admin)"]
+        I --> M{"Payment Choice"}
+        M -- "Online (Razorpay)" --> N["POST /v1/service-requests/{id}/pay-online\nVerify HMAC signature"]
+        M -- "Cash at Workshop" --> O["POST /v1/service-requests/{id}/pay-cash\nAdmin confirms receipt"]
+    end
+
+    A -. Available in .-> C
+```
+
+### Key Service Mechanics:
+1. **Multi-Service Selection**: Clients submit `service_ids: [1, 2, 3]`. The backend verifies all IDs, ensures each is currently active in the catalog, and securely computes the aggregate base amount.
+2. **Dynamic Billing Formula**:
+   $$\\text{Total Payable} = \\text{Base Catalog Cost} + \\text{Parts Replaced Cost} + \\text{Labor Cost}$$
+3. **Automated PDF Invoice Generation**:
+   - Built using `reportlab.platypus` (`SimpleDocTemplate`, `Table`, `ParagraphStyle`).
+   - Automatically saved to `invoices/CZ-INV-{request_id:06d}.pdf`.
+   - Security: Invoices reside in a dedicated `invoices/` root directory outside `/uploads`, preventing unauthorized public URL enumeration.
+4. **Automated SMTP Email Dispatch**:
+   - Powered by Python's `smtplib` and `EmailMessage` with SSL (`smtp.gmail.com:465`).
+   - Configurable via `SENDER_EMAIL` and `SENDER_PASSWORD` environment variables.
+   - Attaches the newly generated PDF invoice and notifies the customer of completed repairs and next scheduled maintenance.
+5. **Permanent Digital Service Booklet**:
+   - Each completed service writes an immutable entry into `ServiceRecords` and detailed line items into `ServiceItems`.
+   - Vehicle odometer is updated to reflect the latest reading.
+   - Potential buyers can view verified historical service logs via `GET /v1/cars/{car_id}/service-history`.
+
+## Payments, Razorpay & Financial Audit Ledger
+
+
+CarZen implements a resilient, tamper-proof financial architecture powered by Razorpay and a double-entry accounting ledger.
+
+### Payment Flow Diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Buyer
+    participant Frontend as Client App
+    participant Backend as CarZen API
+    participant Razorpay as Razorpay Gateway
+    participant Database as MySQL Ledger
+
+    Buyer->>Frontend: Click "Pay for Order" / "Pay Service"
+    Frontend->>Backend: POST /v1/payments (order_id)
+    Note over Backend: Backend derives exact payable amount<br/>from verified DB record (Tamper-proof)
+    Backend->>Razorpay: Create Order (amount in paise, INR)
+    Razorpay-->>Backend: razorpay_order_id
+    Backend->>Database: Insert Payment (Status: PENDING)
+    Backend-->>Frontend: Return razorpay_order_id, key_id, amount
+    Frontend->>Razorpay: Open Razorpay Checkout modal
+    Buyer->>Razorpay: Complete Payment (UPI / Card / NetBanking)
+    Razorpay-->>Frontend: payment_id & signature
+    Frontend->>Backend: POST /v1/payments/{id}/verify (signature payload)
+    Note over Backend: Compute HMAC-SHA256 signature<br/>Verify against razorpay_signature
+    Backend->>Database: Mark Payment SUCCESS<br/>Create double-entry Transactions record<br/>Update Order / ServiceRequest to CONFIRMED / PROCESSING
+    Backend-->>Frontend: 200 OK (Payment Verified)
+```
+
+### Core Security & Accounting Principles:
+- **Zero Client Trust on Pricing**: Clients only supply entity identifiers (`order_id` or `service_request_id`). Pricing is strictly resolved from internal records.
+- **Cryptographic Verification**: Signatures are evaluated with HMAC-SHA256 using `RAZORPAY_KEY_SECRET`.
+- **Per-Transaction Safety Cap**: Configurable via `RAZORPAY_MAX_ORDER_AMOUNT_PAISE` (default ₹50,000 / 5,000,000 paise).
+- **Asynchronous Webhook Processing**: `POST /v1/payments/webhook` listens for payment capture, authorization, and failure events to ensure eventual consistency even if user network drops mid-checkout.
+- **Double-Entry Financial Ledger**: All settlements are recorded in `Transactions` table with buyer ID, seller ID, payment method, gateway reference, and status.
 
 ## HTTP Status Codes & Error Formats
 
@@ -2651,8 +2752,150 @@ curl -X DELETE "http://localhost:8000/v1/car-variants/{variant_id}" \
 
 ## Seller Car Inventory & Assets
 
-*Total Endpoints: 15*
+*Total Endpoints: 17*
 
+
+### POST `/v1/car-price-predict`
+
+**Summary**: Create Car Price Predict  
+
+**Authentication**: Authenticated User (`Bearer <token>`)  
+
+
+#### Request Body (`application/json`)
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | **Yes** | Name |
+| `year` | `integer` | **Yes** | Year |
+| `km_driven` | `integer` | **Yes** | Km Driven |
+| `fuel` | `string` | **Yes** | Fuel |
+| `seller_type` | `string` | **Yes** | Seller Type |
+| `transmission` | `string` | **Yes** | Transmission |
+| `owner` | `string` | **Yes** | Owner |
+| `mileage` | `number` | **Yes** | Mileage |
+| `engine` | `number` | **Yes** | Engine |
+| `max_power` | `number` | **Yes** | Max Power |
+| `seats` | `integer` | **Yes** | Seats |
+
+
+**Example Payload**:
+```json
+{
+  "name": "string",
+  "year": 2023,
+  "km_driven": 1,
+  "fuel": "string",
+  "seller_type": "string",
+  "transmission": "string",
+  "owner": "string",
+  "mileage": 10.5,
+  "engine": 10.5,
+  "max_power": 10.5,
+  "seats": 1
+}
+```
+
+
+#### Response (`201 Successful Response`)
+
+```json
+{
+  "id": 1,
+  "user_id": 1,
+  "name": "string",
+  "year": 2023,
+  "km_driven": 1,
+  "fuel": "string",
+  "seller_type": "string",
+  "transmission": "string",
+  "owner": "string",
+  "mileage": 10.5,
+  "engine": 10.5,
+  "max_power": 10.5,
+  "seats": 1,
+  "predicted_price": 750000
+}
+```
+
+#### Example cURL Request
+```bash
+curl -X POST "http://localhost:8000/v1/car-price-predict" \
+  -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "name": "string",
+  "year": 2023,
+  "km_driven": 1,
+  "fuel": "string",
+  "seller_type": "string",
+  "transmission": "string",
+  "owner": "string",
+  "mileage": 10.5,
+  "engine": 10.5,
+  "max_power": 10.5,
+  "seats": 1
+}'
+```
+
+
+---
+
+### GET `/v1/car-price-predict`
+
+**Summary**: List the current user's cars  
+
+**Authentication**: Authenticated User (`Bearer <token>`)  
+
+
+#### Query Parameters
+
+| Parameter | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `page` | `integer` | No | `1` | - |
+| `limit` | `integer` | No | `20` | - |
+
+#### Response (`200 Successful Response`)
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "name": "string",
+      "year": 2023,
+      "km_driven": 1,
+      "fuel": "string",
+      "seller_type": "string",
+      "transmission": "string",
+      "owner": "string",
+      "mileage": {},
+      "engine": {},
+      "max_power": {},
+      "seats": {},
+      "predicted_price": 750000
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 1,
+    "total_pages": 1
+  }
+}
+```
+
+#### Example cURL Request
+```bash
+curl -X GET "http://localhost:8000/v1/car-price-predict?page=1&limit=20" \
+  -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" \
+  -H "Accept: application/json"
+```
+
+
+---
 
 ### POST `/v1/cars`
 
@@ -6711,7 +6954,7 @@ curl -X GET "http://localhost:8000/v1/transactions/{transaction_id}" \
 
 ## Service Center & Maintenance History
 
-*Total Endpoints: 14*
+*Total Endpoints: 16*
 
 
 ### GET `/v1/cars/{car_id}/service-history`
@@ -6829,6 +7072,10 @@ curl -X GET "http://localhost:8000/v1/cars/{car_id}/service-history?page=1&limit
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
+  "base_amount": "string",
+  "parts_cost": "string",
+  "labor_cost": "string",
+  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -6925,6 +7172,10 @@ curl -X POST "http://localhost:8000/v1/service-requests" \
       "scheduled_date": "2026-09-28",
       "scheduled_time": "string",
       "notes": {},
+      "base_amount": {},
+      "parts_cost": {},
+      "labor_cost": {},
+      "total_amount": {},
       "amount": "string",
       "payment_status": "string",
       "payment_method": {},
@@ -6985,6 +7236,10 @@ curl -X GET "http://localhost:8000/v1/service-requests?page=1&limit=20" \
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
+  "base_amount": "string",
+  "parts_cost": "string",
+  "labor_cost": "string",
+  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -7080,6 +7335,10 @@ curl -X GET "http://localhost:8000/v1/service-requests/{request_id}" \
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
+  "base_amount": "string",
+  "parts_cost": "string",
+  "labor_cost": "string",
+  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -7128,6 +7387,141 @@ curl -X GET "http://localhost:8000/v1/service-requests/{request_id}" \
 #### Example cURL Request
 ```bash
 curl -X POST "http://localhost:8000/v1/service-requests/{request_id}/cancel" \
+  -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "notes": "string"
+}'
+```
+
+
+---
+
+### GET `/v1/service-requests/{request_id}/invoice`
+
+**Summary**: Download Invoice  
+
+**Authentication**: Authenticated User (`Bearer <token>`)  
+
+
+#### Path Parameters
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `request_id` | `integer` | **Yes** | - |
+
+#### Response (`200 Successful Response`)
+
+```json
+{}
+```
+
+#### Example cURL Request
+```bash
+curl -X GET "http://localhost:8000/v1/service-requests/{request_id}/invoice" \
+  -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" \
+  -H "Accept: application/json"
+```
+
+
+---
+
+### POST `/v1/service-requests/{request_id}/pay-cash`
+
+**Summary**: User chooses to pay cash at workshop counter  
+
+**Description**: Convenience endpoint for user to choose 'Pay with Cash at Service Center'.
+Sets payment_method = 'cash'. Payment is settled at the counter when vehicle is picked up.  
+
+**Authentication**: Authenticated User (`Bearer <token>`)  
+
+
+#### Path Parameters
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `request_id` | `integer` | **Yes** | - |
+
+#### Request Body (`application/json`)
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `notes` | `string` | No | Optional customer notes on cash payment at workshop |
+
+
+**Example Payload**:
+```json
+{
+  "notes": "string"
+}
+```
+
+
+#### Response (`200 Successful Response`)
+
+```json
+{
+  "id": 1,
+  "user_id": 1,
+  "car_id": 1,
+  "service_id": 1,
+  "address_id": 1,
+  "scheduled_date": "2026-09-28",
+  "scheduled_time": "string",
+  "notes": "string",
+  "base_amount": "string",
+  "parts_cost": "string",
+  "labor_cost": "string",
+  "total_amount": "string",
+  "amount": "string",
+  "payment_status": "string",
+  "payment_method": "string",
+  "status": "requested",
+  "admin_note": "string",
+  "service_record_id": 1,
+  "created_at": "2026-09-28T10:00:00Z",
+  "updated_at": "2026-09-28T10:00:00Z",
+  "user": {
+    "id": 1,
+    "first_name": "John",
+    "last_name": {},
+    "email": "user@carzen.com",
+    "phone_number": {}
+  },
+  "car": {
+    "id": 1,
+    "registration_number": {},
+    "manufacturing_year": 2023,
+    "color": {},
+    "fuel_type": {}
+  },
+  "service": {
+    "id": 1,
+    "name": "string",
+    "description": {},
+    "price": "string",
+    "duration_minutes": {},
+    "image_url": {},
+    "status": "string",
+    "created_at": "2026-09-28T10:00:00Z",
+    "updated_at": "2026-09-28T10:00:00Z"
+  },
+  "items": [
+    {
+      "id": 1,
+      "service_id": {},
+      "service_name": "string",
+      "unit_price": "string",
+      "duration_minutes": {}
+    }
+  ]
+}
+```
+
+#### Example cURL Request
+```bash
+curl -X POST "http://localhost:8000/v1/service-requests/{request_id}/pay-cash" \
   -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" \
   -H "Accept: application/json" \
   -H "Content-Type: application/json" \
@@ -7219,6 +7613,10 @@ curl -X POST "http://localhost:8000/v1/service-requests/{request_id}/pay-online"
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
+  "base_amount": "string",
+  "parts_cost": "string",
+  "labor_cost": "string",
+  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -9926,6 +10324,10 @@ curl -X PATCH "http://localhost:8000/v1/admin/reviews/{review_id}/visibility" \
       "scheduled_date": "2026-09-28",
       "scheduled_time": "string",
       "notes": {},
+      "base_amount": {},
+      "parts_cost": {},
+      "labor_cost": {},
+      "total_amount": {},
       "amount": "string",
       "payment_status": "string",
       "payment_method": {},
@@ -9986,6 +10388,10 @@ curl -X GET "http://localhost:8000/v1/admin/service-requests?page=1&limit=20" \
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
+  "base_amount": "string",
+  "parts_cost": "string",
+  "labor_cost": "string",
+  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -10066,6 +10472,10 @@ curl -X GET "http://localhost:8000/v1/admin/service-requests/{request_id}" \
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
+  "base_amount": "string",
+  "parts_cost": "string",
+  "labor_cost": "string",
+  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -10161,6 +10571,10 @@ curl -X POST "http://localhost:8000/v1/admin/service-requests/{request_id}/accep
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
+  "base_amount": "string",
+  "parts_cost": "string",
+  "labor_cost": "string",
+  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -10270,6 +10684,10 @@ curl -X POST "http://localhost:8000/v1/admin/service-requests/{request_id}/cance
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
+  "base_amount": "string",
+  "parts_cost": "string",
+  "labor_cost": "string",
+  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -10374,6 +10792,10 @@ curl -X POST "http://localhost:8000/v1/admin/service-requests/{request_id}/compl
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
+  "base_amount": "string",
+  "parts_cost": "string",
+  "labor_cost": "string",
+  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -10473,6 +10895,10 @@ curl -X POST "http://localhost:8000/v1/admin/service-requests/{request_id}/confi
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
+  "base_amount": "string",
+  "parts_cost": "string",
+  "labor_cost": "string",
+  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -10576,6 +11002,10 @@ curl -X POST "http://localhost:8000/v1/admin/service-requests/{request_id}/rejec
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
+  "base_amount": "string",
+  "parts_cost": "string",
+  "labor_cost": "string",
+  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",
@@ -10662,6 +11092,10 @@ curl -X POST "http://localhost:8000/v1/admin/service-requests/{request_id}/sched
   "scheduled_date": "2026-09-28",
   "scheduled_time": "string",
   "notes": "string",
+  "base_amount": "string",
+  "parts_cost": "string",
+  "labor_cost": "string",
+  "total_amount": "string",
   "amount": "string",
   "payment_status": "string",
   "payment_method": "string",

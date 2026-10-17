@@ -24,6 +24,16 @@ class User(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc)) 
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)) 
     deleted_at = Column(DateTime, nullable=True) 
+
+    @property
+    def name(self) -> str:
+        parts = [self.first_name, self.last_name]
+        full = " ".join(p for p in parts if p)
+        return full if full else (self.username or "")
+
+    @property
+    def full_name(self) -> str:
+        return self.name
      
     # Relationships 
     addresses = relationship("Address",back_populates="user",foreign_keys="Address.user_id")

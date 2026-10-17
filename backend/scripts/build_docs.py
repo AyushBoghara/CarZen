@@ -293,9 +293,11 @@ doc.append("## Table of Contents\n")
 doc.append("1. [Overview & Architecture Standards](#overview--architecture-standards)")
 doc.append("2. [Authentication & Authorization Guide](#authentication--authorization-guide)")
 doc.append("3. [Car Management & User Workflow](#car-management--user-workflow)")
-doc.append("4. [HTTP Status Codes & Error Formats](#http-status-codes--error-formats)")
+doc.append("4. [Workshop & Digital Service Lifecycle (PDF Invoicing & Email Dispatch)](#workshop--digital-service-lifecycle-pdf-invoicing--email-dispatch)")
+doc.append("5. [Payments, Razorpay & Financial Audit Ledger](#payments-razorpay--financial-audit-ledger)")
+doc.append("6. [HTTP Status Codes & Error Formats](#http-status-codes--error-formats)")
 
-cat_num = 5
+cat_num = 7
 for cat_name, _ in CATEGORY_ORDER:
     count = len(endpoints_by_cat.get(cat_name, []))
     if count > 0:
@@ -469,6 +471,105 @@ flowchart TD
 | **Payment Captured** | `PUBLISHED` | `True` | `RESERVED` | `PROCESSING` |
 | **Order Completed / Handed Over** | `SOLD` | `True` | `SOLD` | `COMPLETED` |
 | **Order Cancelled / Rejected** | `PUBLISHED` | `True` | `ACTIVE` *(restored)* | `CANCELLED` / `REJECTED` |
+""")
+
+doc.append("## Workshop & Digital Service Lifecycle (PDF Invoicing & Email Dispatch)\n")
+doc.append("""
+CarZen includes an enterprise vehicle service and workshop management module. It allows vehicle owners to select multiple maintenance packages, schedule appointments, and track jobs through completion, where an itemized PDF invoice is automatically generated and emailed to the customer.
+
+### Workshop Workflow Architecture
+
+```mermaid
+flowchart TD
+    subgraph Catalog_Setup["1. Service Catalog Management (Admin)"]
+        A["Admin creates Services (Oil Change, Brake Inspection, etc.)\\nwith base price & estimated duration"]
+    end
+
+    subgraph Customer_Booking["2. Multi-Service Request (Customer)"]
+        B["User selects verified owned vehicle"]
+        C["User picks one or more services (service_ids)"]
+        D["User selects date, slot time & optional pickup address"]
+        B --> C --> D
+        D --> E["ServiceRequest created (Status: PENDING)\\nBase total calculated server-side"]
+    end
+
+    subgraph Workshop_Execution["3. Workshop Queue & Servicing (Admin / Technician)"]
+        E --> F["Admin reviews & confirms slot (Status: SCHEDULED)"]
+        F --> G["Technician begins work (Status: IN_PROGRESS)"]
+        G --> H["Technician completes repairs:\\n- Inputs parts cost & labor cost\\n- Records final odometer reading\\n- Adds technician notes & next service target"]
+    end
+
+    subgraph Invoicing_Dispatch["4. Completion, PDF Invoicing & Emailing (System)"]
+        H --> I["Status: COMPLETED\\nVehicle mileage updated\\nPermanent ServiceRecord & ServiceItems saved"]
+        I --> J["ReportLab compiles branded PDF Invoice\\n(Saved to invoices/CZ-INV-XXXXXX.pdf)"]
+        J --> K["SMTP Dispatcher emails invoice PDF to customer email"]
+        K --> L["In-app & push notification delivered to user"]
+    end
+
+    subgraph Settlement["5. Billing & Payment (Customer & Admin)"]
+        I --> M{"Payment Choice"}
+        M -- "Online (Razorpay)" --> N["POST /v1/service-requests/{id}/pay-online\\nVerify HMAC signature"]
+        M -- "Cash at Workshop" --> O["POST /v1/service-requests/{id}/pay-cash\\nAdmin confirms receipt"]
+    end
+
+    A -. Available in .-> C
+```
+
+### Key Service Mechanics:
+1. **Multi-Service Selection**: Clients submit `service_ids: [1, 2, 3]`. The backend verifies all IDs, ensures each is currently active in the catalog, and securely computes the aggregate base amount.
+2. **Dynamic Billing Formula**:
+   $$\\\\text{Total Payable} = \\\\text{Base Catalog Cost} + \\\\text{Parts Replaced Cost} + \\\\text{Labor Cost}$$
+3. **Automated PDF Invoice Generation**:
+   - Built using `reportlab.platypus` (`SimpleDocTemplate`, `Table`, `ParagraphStyle`).
+   - Automatically saved to `invoices/CZ-INV-{request_id:06d}.pdf`.
+   - Security: Invoices reside in a dedicated `invoices/` root directory outside `/uploads`, preventing unauthorized public URL enumeration.
+4. **Automated SMTP Email Dispatch**:
+   - Powered by Python's `smtplib` and `EmailMessage` with SSL (`smtp.gmail.com:465`).
+   - Configurable via `SENDER_EMAIL` and `SENDER_PASSWORD` environment variables.
+   - Attaches the newly generated PDF invoice and notifies the customer of completed repairs and next scheduled maintenance.
+5. **Permanent Digital Service Booklet**:
+   - Each completed service writes an immutable entry into `ServiceRecords` and detailed line items into `ServiceItems`.
+   - Vehicle odometer is updated to reflect the latest reading.
+   - Potential buyers can view verified historical service logs via `GET /v1/cars/{car_id}/service-history`.
+""")
+
+doc.append("## Payments, Razorpay & Financial Audit Ledger\n")
+doc.append("""
+CarZen implements a resilient, tamper-proof financial architecture powered by Razorpay and a double-entry accounting ledger.
+
+### Payment Flow Diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Buyer
+    participant Frontend as Client App
+    participant Backend as CarZen API
+    participant Razorpay as Razorpay Gateway
+    participant Database as MySQL Ledger
+
+    Buyer->>Frontend: Click "Pay for Order" / "Pay Service"
+    Frontend->>Backend: POST /v1/payments (order_id)
+    Note over Backend: Backend derives exact payable amount<br/>from verified DB record (Tamper-proof)
+    Backend->>Razorpay: Create Order (amount in paise, INR)
+    Razorpay-->>Backend: razorpay_order_id
+    Backend->>Database: Insert Payment (Status: PENDING)
+    Backend-->>Frontend: Return razorpay_order_id, key_id, amount
+    Frontend->>Razorpay: Open Razorpay Checkout modal
+    Buyer->>Razorpay: Complete Payment (UPI / Card / NetBanking)
+    Razorpay-->>Frontend: payment_id & signature
+    Frontend->>Backend: POST /v1/payments/{id}/verify (signature payload)
+    Note over Backend: Compute HMAC-SHA256 signature<br/>Verify against razorpay_signature
+    Backend->>Database: Mark Payment SUCCESS<br/>Create double-entry Transactions record<br/>Update Order / ServiceRequest to CONFIRMED / PROCESSING
+    Backend-->>Frontend: 200 OK (Payment Verified)
+```
+
+### Core Security & Accounting Principles:
+- **Zero Client Trust on Pricing**: Clients only supply entity identifiers (`order_id` or `service_request_id`). Pricing is strictly resolved from internal records.
+- **Cryptographic Verification**: Signatures are evaluated with HMAC-SHA256 using `RAZORPAY_KEY_SECRET`.
+- **Per-Transaction Safety Cap**: Configurable via `RAZORPAY_MAX_ORDER_AMOUNT_PAISE` (default ₹50,000 / 5,000,000 paise).
+- **Asynchronous Webhook Processing**: `POST /v1/payments/webhook` listens for payment capture, authorization, and failure events to ensure eventual consistency even if user network drops mid-checkout.
+- **Double-Entry Financial Ledger**: All settlements are recorded in `Transactions` table with buyer ID, seller ID, payment method, gateway reference, and status.
 """)
 
 doc.append("## HTTP Status Codes & Error Formats\n")

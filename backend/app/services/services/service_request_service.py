@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal
+import logging
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.cars import Cars
@@ -18,6 +19,9 @@ from app.services.notifications import notification_service
 from app.services.payments import payment_service
 from app.models.address import Address
 from app.services.services import invoice_pdf_service
+from app.services.mail.mail_service import create_mail_service
+
+logger = logging.getLogger(__name__)
 
 
 def _request_query(db: Session):
@@ -436,12 +440,43 @@ def admin_complete_request(
     db.refresh(request)
     
     try:
-        request.invoice_pdf_path = invoice_pdf_service.generate_service_invoice(request, record)
+        invoice_path = invoice_pdf_service.generate_service_invoice(
+            request, record
+        )
+
+        if not invoice_path:
+            raise RuntimeError("Invoice generator returned an empty path.")
+
+        request.invoice_pdf_path = invoice_path
         db.commit()
         db.refresh(request)
-    except Exception:
-        db.rollback()
 
+        user = request.user
+        
+        if not user and request.user_id:
+            user = db.query(User).filter(User.id == request.user_id).first()
+            request.user = user
+
+        customer_email = user.email if user else None
+
+        if not customer_email:
+            raise ValueError(
+                f"Customer email missing for request #{request.id}"
+            )
+
+        create_mail_service(
+            receiver_email=customer_email,
+            request=request,
+            filename=invoice_path,
+        )
+        
+    except Exception as e:
+        logger.error(
+            f"Error generating invoice or sending email for request #{request.id}: {e}",
+            exc_info=True,
+        )
+        
+        
     return request
 
 
